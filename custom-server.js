@@ -2,9 +2,18 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const net = require("net");
+const { registerShutdown } = require("./shutdown.cjs");
 const { pathToFileURL } = require("url");
 
 const origCreate = http.createServer.bind(http);
+function boundedEnv(name, fallback, ceiling) {
+  const value = Number(process.env[name]);
+  return Number.isSafeInteger(value) && value > 0 ? Math.min(value, ceiling) : fallback;
+}
+const MAX_BODY_BYTES = boundedEnv("MAX_REQUEST_BODY_BYTES", 128 * 1024 * 1024, 128 * 1024 * 1024);
+const H2C_BODY_TIMEOUT_MS = boundedEnv("H2C_BODY_TIMEOUT_MS", 60_000, 60_000);
+const MAX_INFLIGHT_REQUESTS = boundedEnv("MAX_INFLIGHT_REQUESTS", 64, 1024);
 
 // Per-process secret proving x-fr-real-ip was stamped below rather than sent by the client.
 // A bare `next start` / `next dev` never loads this file, so it cannot produce a matching
@@ -14,6 +23,9 @@ const PEER_TOKEN = crypto.randomBytes(24).toString("hex");
 process.env.FLAGSHIPROUTER_PEER_TOKEN = PEER_TOKEN;
 
 let backgroundRefreshStarted = false;
+let activeRequests = 0;
+let pendingUpgrades = 0;
+let pendingUpgradeBytes = 0;
 
 function startBackgroundTokenRefreshFromCustomServer() {
   if (backgroundRefreshStarted) return;
@@ -54,6 +66,16 @@ http.createServer = (...args) => {
   const rest = args.filter((a) => typeof a !== "function");
   if (!handler) return origCreate(...args);
   const wrapped = (req, res) => {
+    if (activeRequests >= MAX_INFLIGHT_REQUESTS || Number(req.headers["content-length"] || 0) > MAX_BODY_BYTES) {
+      res.writeHead(activeRequests >= MAX_INFLIGHT_REQUESTS ? 503 : 413, { "Connection": "close" });
+      res.end("Request capacity or body size limit exceeded");
+      return;
+    }
+    activeRequests++;
+    let released = false;
+    const release = () => { if (!released) { released = true; activeRequests--; } };
+    res.once("finish", release);
+    res.once("close", release);
     const socketIp = req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : "";
     const xff = req.headers["x-forwarded-for"];
     const xRealIp = req.headers["x-real-ip"];
@@ -61,7 +83,10 @@ http.createServer = (...args) => {
     const isLoopbackProxy = socketIp === "127.0.0.1" || socketIp === "::1" || socketIp === "::ffff:127.0.0.1";
     // Trust forwarding headers only when the TCP peer is a local reverse proxy.
     // Direct/public sockets remain keyed by the unspoofable peer address.
-    const proxyIp = xRealIp || (xff ? String(xff).split(",")[0].trim() : "");
+    // A single local proxy must append its observed peer or overwrite X-Real-IP.
+    // Never trust a client-supplied prefix in an appended forwarding chain.
+    const candidate = xff ? String(xff).split(",").at(-1).trim() : xRealIp;
+    const proxyIp = net.isIP(candidate || "") ? candidate : "";
     const ip = isLoopbackProxy && proxyIp ? proxyIp : socketIp;
     delete req.headers["x-fr-real-ip"];
     delete req.headers["x-forwarded-for"];
@@ -73,6 +98,13 @@ http.createServer = (...args) => {
     return handler(req, res);
   };
   const server = origCreate(...rest, wrapped);
+  registerShutdown(server, () => new Promise(resolve => {
+    server.close(resolve);
+    server.closeIdleConnections?.();
+    const timer = setTimeout(() => { server.closeAllConnections?.(); resolve(); }, 3000);
+    timer.unref();
+    server.once("close", () => clearTimeout(timer));
+  }), -100);
   server.once("listening", () => {
     startBackgroundTokenRefreshFromCustomServer();
   });
@@ -85,19 +117,36 @@ http.createServer = (...args) => {
     }
 
     const contentLength = Number(req.headers["content-length"] || 0);
-    if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+    const maxBodyBytes = MAX_BODY_BYTES;
+    if (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > maxBodyBytes || pendingUpgrades >= MAX_INFLIGHT_REQUESTS || pendingUpgradeBytes + contentLength > 256 * 1024 * 1024) {
       socket.destroy();
       return true;
     }
+    pendingUpgrades++;
+    pendingUpgradeBytes += contentLength;
+    let reserved = true;
+    const releaseUpgrade = () => { if (reserved) { reserved = false; pendingUpgrades--; pendingUpgradeBytes -= contentLength; } };
+    socket.once("close", releaseUpgrade);
     const chunks = [head];
     let received = head.length;
+    const destroy = () => socket.destroy();
+    socket.on("error", destroy);
+    socket.on("end", destroy);
+    // Absolute deadline also stops slow-drip clients from resetting an idle timer.
+    const bodyDeadline = setTimeout(destroy, H2C_BODY_TIMEOUT_MS);
+    bodyDeadline.unref();
+    socket.once("close", () => clearTimeout(bodyDeadline));
     const serve = () => {
+      releaseUpgrade();
+      clearTimeout(bodyDeadline);
+      socket.off("end", destroy);
       // Replay the upgraded request through the existing HTTP/1.1 handler.
       const replay = new http.IncomingMessage(socket);
       Object.assign(replay, { method: req.method, url: req.url, headers: req.headers, complete: true });
       if (received) replay.push(Buffer.concat(chunks, received).subarray(0, contentLength));
       replay.push(null);
       const res = new http.ServerResponse(replay);
+      res.on("error", destroy);
       res.shouldKeepAlive = false;
       res.assignSocket(socket);
       res.once("finish", () => socket.end());
@@ -109,6 +158,7 @@ http.createServer = (...args) => {
     if (received >= contentLength) serve();
     else {
       socket.on("data", function readBody(chunk) {
+        if (received + chunk.length > maxBodyBytes) return destroy();
         chunks.push(chunk);
         received += chunk.length;
         if (received < contentLength) return;

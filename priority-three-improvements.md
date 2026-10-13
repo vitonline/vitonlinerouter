@@ -1,0 +1,11 @@
+# Priority 3: health scheduling and account recovery
+
+The Models page now provides opt-in periodic text checks for up to ten explicitly selected model IDs, an interval of 5–1440 minutes, and a rolling hourly budget of 1–60 tests. Configuration, budget reservations, rotation position, last run, skipped models, and the last fifty status transitions persist in settings. A process-wide guard prevents overlapping runs. Budget is reserved before a probe, and disabled connections are never enabled. Model selection rotates when the budget cannot cover every model.
+
+Checks use the existing model probe and result persistence path. The budget counts tests, not transport requests: routing retries and credential refreshes can perform additional provider calls. Existing model cooldowns remain effective. Polling the Models page shows status transitions without repeatedly notifying for an unchanged status. These are in-dashboard notifications, not email or operating-system push notifications. The router must remain running; missed intervals do not trigger a catch-up burst.
+
+The account recovery panel reads existing usage APIs on demand and returns only account labels, quota values, and reported reset times. Disabled accounts are skipped. Unsupported or failed allowance APIs are shown explicitly. Subscription renewal and daily check-in remain account actions; no undocumented check-in endpoint is called. This patch cannot repair an expired subscription or invalid upstream API key.
+
+Validation: scheduler unit tests cover validation, persistent budget reservations, disabled connections, status transitions, overlapping runs, interval gating, and rotation after budget expiry. Persistence and failure classification regressions are included in the targeted test run.
+
+Verified: 32 targeted tests passed across four test files; ESLint passed for new application files; the production CLI build succeeded. After restart, the live API returned the default disabled schedule, rejected an excessive request budget without changing configuration, and required authentication. Account allowance sanitization and skipped connections were verified using mocked upstream usage responses, not a fresh live probe of every provider account.

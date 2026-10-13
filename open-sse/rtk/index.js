@@ -41,6 +41,7 @@ export function compressMessages(body, enabled) {
         continue;
       }
 
+      if (msg.is_error || msg.isError || msg.status === "error") continue;
       // Shape 1: OpenAI tool message — { role:"tool", content: "string" }
       if (msg.role === "tool" && typeof msg.content === "string") {
         msg.content = compressText(msg.content, stats, "openai-tool");
@@ -64,7 +65,7 @@ export function compressMessages(body, enabled) {
       for (let j = 0; j < msg.content.length; j++) {
         const block = msg.content[j];
         if (!block || block.type !== "tool_result") continue;
-        if (block.is_error === true) continue; // preserve error traces
+        if (block.is_error || block.isError) continue; // preserve error traces
 
         if (typeof block.content === "string") {
           // Shape 2: claude string form
@@ -100,7 +101,7 @@ function compressKiroFormat(body, enabled) {
       if (!Array.isArray(toolResults)) continue;
 
       for (const tr of toolResults) {
-        if (tr.status === "error") continue; // preserve error traces
+        if (tr.status === "error" || tr.isError || tr.is_error) continue; // preserve error traces
         if (!Array.isArray(tr.content)) continue;
 
         for (const part of tr.content) {
@@ -120,6 +121,12 @@ function compressKiroFormat(body, enabled) {
 function compressText(text, stats, shape) {
   const bytesIn = text.length;
   stats.bytesBefore += bytesIn;
+  // Structured tool outputs must remain parseable, even with repeated records.
+  try {
+    JSON.parse(text);
+    stats.bytesAfter += bytesIn;
+    return text;
+  } catch { /* prose/log output may be compressed */ }
 
   if (bytesIn < MIN_COMPRESS_SIZE || bytesIn > RAW_CAP) {
     stats.bytesAfter += bytesIn;

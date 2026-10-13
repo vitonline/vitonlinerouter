@@ -1,4 +1,5 @@
 // Logger utility for cloud
+import { redactSecretText, redactSecrets } from "open-sse/utils/redactSecrets";
 
 const LOG_LEVELS = {
   DEBUG: 0,
@@ -35,12 +36,12 @@ export function tagForSession(seed) {
 // Print one correlated line: [time] tag symbol message
 export function line(tag, symbol, message) {
   if (LEVEL > LOG_LEVELS.INFO) return;
-  console.log(`[${formatTime()}] ${tag} ${symbol} ${message}`);
+  console.log(redactSecretText(`[${formatTime()}] ${tag} ${symbol} ${message}`));
 }
 
 // Like line() but always printed regardless of LOG_LEVEL (errors must never be hidden)
 export function errorLine(tag, symbol, message) {
-  console.log(`[${formatTime()}] ${tag} ${symbol} ${message}`);
+  console.log(redactSecretText(`[${formatTime()}] ${tag} ${symbol} ${message}`));
 }
 
 // Format thinking intent for the request line ("high(10k)" / "off" / "auto")
@@ -58,15 +59,16 @@ export function fmtThink(intent) {
 
 function formatData(data) {
   if (!data) return "";
-  if (typeof data === "string") return data;
+  if (typeof data === "string") return redactSecretText(data);
   try {
-    return JSON.stringify(data);
+    return JSON.stringify(redactSecrets(data));
   } catch {
     return String(data);
   }
 }
 
 export function debug(tag, message, data) {
+  message = redactSecretText(message);
   if (LEVEL <= LOG_LEVELS.DEBUG) {
     const dataStr = data ? ` ${formatData(data)}` : "";
     console.log(`[${formatTime()}] 🔍 [${tag}] ${message}${dataStr}`);
@@ -74,6 +76,7 @@ export function debug(tag, message, data) {
 }
 
 export function info(tag, message, data) {
+  message = redactSecretText(message);
   if (LEVEL <= LOG_LEVELS.INFO) {
     const dataStr = data ? ` ${formatData(data)}` : "";
     console.log(`[${formatTime()}] ℹ️  [${tag}] ${message}${dataStr}`);
@@ -81,6 +84,7 @@ export function info(tag, message, data) {
 }
 
 export function warn(tag, message, data) {
+  message = redactSecretText(message);
   if (LEVEL <= LOG_LEVELS.WARN) {
     const dataStr = data ? ` ${formatData(data)}` : "";
     console.warn(`[${formatTime()}] ⚠️  [${tag}] ${message}${dataStr}`);
@@ -88,6 +92,7 @@ export function warn(tag, message, data) {
 }
 
 export function error(tag, message, data) {
+  message = redactSecretText(message);
   if (LEVEL <= LOG_LEVELS.ERROR) {
     const dataStr = data ? ` ${formatData(data)}` : "";
     console.log(`[${formatTime()}] ❌ [${tag}] ${message}${dataStr}`);

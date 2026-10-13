@@ -28,7 +28,8 @@ export default function OverviewCards({ stats }) {
       <Card className="flex min-w-0 flex-col items-center text-center gap-1 px-3 py-3 sm:px-4">
         <span className="text-text-muted text-xs uppercase font-semibold sm:text-sm">Est. Cost</span>
         <span className="w-full truncate text-lg font-bold text-warning xl:text-xl" title={`~${fmtCost(stats.totalCost)}`}>~{fmtCost(stats.totalCost)}</span>
-        <span className="text-[10px] text-text-muted">Estimated, not actual billing</span>
+        <span className="text-[10px] text-text-muted">Known-price subtotal; provider invoice may differ</span>
+        <span className="text-[10px] text-warning">{stats.unknownCostRequests || 0} requests with unknown pricing</span>
       </Card>
     </div>
   );

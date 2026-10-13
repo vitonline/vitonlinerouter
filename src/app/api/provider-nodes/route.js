@@ -34,15 +34,16 @@ export async function POST(request) {
     const body = await request.json();
     const { name, prefix, apiType, baseUrl, type } = body;
 
-    if (!name?.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (!prefix?.trim()) {
+    if (typeof prefix !== "string" || !prefix.trim()) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
     }
 
     // Determine type
+    if (baseUrl !== undefined && typeof baseUrl !== "string") return NextResponse.json({ error: "Invalid API base URL" }, { status: 400 });
     const nodeType = type || "openai-compatible";
 
     if (nodeType === "openai-compatible") {
@@ -98,6 +99,7 @@ export async function POST(request) {
 
     return NextResponse.json({ error: "Invalid provider node type" }, { status: 400 });
   } catch (error) {
+    if (error.status === 400 || error.status === 409) return NextResponse.json({ error: error.message }, { status: error.status });
     console.log("Error creating provider node:", error);
     return NextResponse.json({ error: "Failed to create provider node" }, { status: 500 });
   }

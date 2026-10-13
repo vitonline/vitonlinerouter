@@ -11,6 +11,9 @@
  * rate: the vendor-prefix strip in getPricingForModel() would turn
  * "cline-free/deepseek-v4.1-flash" into "deepseek-v4.1-flash" and match
  * MODEL_PRICING, so the namespace is checked before both fallbacks.
+ * The ":free" suffix is the same convention on the vendor-id side
+ * (qwen/qwen-plus-2025-07-28:free, deepseek-v4.1-flash:free): a suffixed
+ * id always bills $0 regardless of which family pattern it resembles.
  */
 export const FREE_MODEL_NAMESPACES = ["cline-free/"];
 
@@ -22,7 +25,7 @@ export const ZERO_PRICING = {
 export function isFreeModel(model) {
   if (!model) return false;
   const lower = String(model).toLowerCase();
-  return FREE_MODEL_NAMESPACES.some((ns) => lower.startsWith(ns));
+  return FREE_MODEL_NAMESPACES.some((ns) => lower.startsWith(ns)) || lower.endsWith(":free");
 }
 
 /**
@@ -456,7 +459,7 @@ export function calculateCostFromTokens(tokens, pricing) {
   cost += nonCachedInput * (pricing.input / 1000000);
 
   if (cachedTokens > 0) {
-    cost += cachedTokens * ((pricing.cached || pricing.input) / 1000000);
+    cost += cachedTokens * ((pricing.cached ?? pricing.input) / 1000000);
   }
 
   const outputTokens = tokens.completion_tokens || tokens.output_tokens || 0;
@@ -464,11 +467,11 @@ export function calculateCostFromTokens(tokens, pricing) {
 
   const reasoningTokens = tokens.reasoning_tokens || 0;
   if (reasoningTokens > 0) {
-    cost += reasoningTokens * ((pricing.reasoning || pricing.output) / 1000000);
+    cost += reasoningTokens * ((pricing.reasoning ?? pricing.output) / 1000000);
   }
 
   if (cacheCreationTokens > 0) {
-    cost += cacheCreationTokens * ((pricing.cache_creation || pricing.input) / 1000000);
+    cost += cacheCreationTokens * ((pricing.cache_creation ?? pricing.input) / 1000000);
   }
 
   return cost;

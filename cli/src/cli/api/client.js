@@ -117,10 +117,12 @@ function makeRequest(method, path, body = null) {
           const parsed = data ? JSON.parse(data) : {};
           
           // Check if response indicates error
-          if (res.statusCode >= 400 || parsed.error) {
+          if (res.statusCode >= 400 || parsed.error || parsed.success === false || parsed.pending === true) {
             resolve({
               success: false,
-              error: parsed.error || `HTTP ${res.statusCode}`,
+              pending: parsed.pending === true,
+              data: parsed,
+              error: parsed.error || (parsed.pending ? "authorization_pending" : `Request failed (HTTP ${res.statusCode})`),
               statusCode: res.statusCode,
             });
           } else {

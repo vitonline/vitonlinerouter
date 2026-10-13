@@ -3,6 +3,12 @@ import { OAUTH_ENDPOINTS, GITHUB_COPILOT, buildKimiHeaders } from "../../config/
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
 import { dedupRefresh } from "./dedup.js";
 import { buildExternalIdpRefreshParams } from "../../../src/lib/oauth/kiroExternalIdp.js";
+import { REFRESH_TIMEOUT_MS } from "../../config/runtimeConfig.js";
+
+const fetch = (url, options = {}) => globalThis.fetch(url, {
+  ...options,
+  signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(REFRESH_TIMEOUT_MS)]) : AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+});
 
 let _xaiServiceSingleton = null;
 export async function refreshXaiToken(refreshToken, log) {

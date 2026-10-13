@@ -1,10 +1,14 @@
 "use client";
+import { modelTestResult, modelTestKey } from "@/shared/utils/modelTestResult";
+import { useModelTestHistory, notifyModelTestsChanged } from "@/shared/hooks/useModelTestHistory";
 
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/shared/components";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 function CompatibleModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias, onTest, testStatus, isTesting }) {
+  const result = typeof testStatus === "object" ? testStatus : null;
+  testStatus = result ? (result.ok ? "ok" : "error") : testStatus;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
     : testStatus === "error"
@@ -27,6 +31,7 @@ function CompatibleModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias,
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{modelId}</p>
+        {result && !isTesting && <p title={result.error} className={`text-[11px] ${result.ok ? "text-green-500" : "text-red-500"}`}>{result.ok ? "Last test passed" : result.reason}{result.testedAt && <span className="block text-[9px] text-text-muted">Tested {new Date(result.testedAt).toLocaleString()}</span>}</p>}
         <div className="flex items-center gap-1 mt-1">
           <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
           <div className="relative group/btn">
@@ -77,6 +82,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
   const [importing, setImporting] = useState(false);
   const [testingModelId, setTestingModelId] = useState(null);
   const [modelTestResults, setModelTestResults] = useState({});
+  const history = useModelTestHistory();
 
   const handleTestModel = async (modelId) => {
     if (testingModelId) return;
@@ -88,9 +94,10 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
         body: JSON.stringify({ model: `${providerStorageAlias}/${modelId}` }),
       });
       const data = await res.json();
-      setModelTestResults((prev) => ({ ...prev, [modelId]: data.ok ? "ok" : "error" }));
+      setModelTestResults((prev) => ({ ...prev, [modelId]: modelTestResult(data) }));
+      notifyModelTestsChanged();
     } catch {
-      setModelTestResults((prev) => ({ ...prev, [modelId]: "error" }));
+      setModelTestResults((prev) => ({ ...prev, [modelId]: modelTestResult({ ok: false, error: "Network error" }) }));
     } finally {
       setTestingModelId(null);
     }
@@ -204,7 +211,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
               onCopy={onCopy}
               onDeleteAlias={() => source === "custom" ? onDeleteCustomModel(id) : onDeleteAlias(alias)}
               onTest={connections.length > 0 ? () => handleTestModel(id) : undefined}
-              testStatus={modelTestResults[id]}
+              testStatus={modelTestResults[id] || history.results[modelTestKey(`${providerStorageAlias}/${id}`)]}
               isTesting={testingModelId === id}
             />
           ))}

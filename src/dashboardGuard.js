@@ -3,6 +3,8 @@ import { getSettings, validateApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 import { hasTrustedPeerHeaders } from "@/lib/auth/trustedPeer";
+import { timingSafeEqual } from "node:crypto";
+import { checkApiRequestLimit } from "@/lib/auth/apiLimiter";
 
 const CLI_TOKEN_HEADER = "x-fr-cli-token";
 const CLI_TOKEN_SALT = "fr-cli-auth";
@@ -16,7 +18,9 @@ async function getCliToken() {
 async function hasValidCliToken(request) {
   const token = request.headers.get(CLI_TOKEN_HEADER);
   if (!token) return false;
-  return token === await getCliToken();
+  const supplied = Buffer.from(token);
+  const expected = Buffer.from(await getCliToken());
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
 // Public API paths — no auth required (LLM API has its own key auth inside handler).
@@ -35,7 +39,7 @@ const PUBLIC_API_PATHS = [
 
 // Public top-level prefixes (LLM API endpoints with their own API key auth).
 // Keep root-level rewrites here too: middleware runs before Next.js rewrites.
-const PUBLIC_PREFIXES = ["/v1", "/v1beta", "/api/v1", "/api/v1beta", "/codex", "/responses"];
+const PUBLIC_PREFIXES = ["/v1", "/v1beta", "/api/v1", "/api/v1beta", "/codex", "/responses", "/systemone"];
 
 // Always require JWT token regardless of requireLogin setting
 const ALWAYS_PROTECTED = [
@@ -114,9 +118,6 @@ function isLoopbackPeer(request) {
   }
   // Bare `next dev` forks its server, so the wrapper never loads and no peer address
   // reaches us. Host is spoofable, so this stays confined to development.
-  if (process.env.NODE_ENV === "development") {
-    return isLoopbackHostname(request.headers.get("host"));
-  }
   return false;
 }
 
@@ -222,7 +223,12 @@ export async function proxy(request) {
   }
 
   if (isPublicLlmApi(pathname)) {
-    if (await canAccessPublicLlmApi(request)) return NextResponse.next();
+    if (await canAccessPublicLlmApi(request)) {
+      const peer = hasTrustedPeerHeaders(request) ? request.headers.get("x-fr-real-ip") : "unknown";
+      const limit = checkApiRequestLimit(extractApiKey(request), peer);
+      if (!limit.allowed) return NextResponse.json({ error: "API request rate limit exceeded" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
+      return NextResponse.next();
+    }
     return NextResponse.json({ error: "API key required for remote API access" }, { status: 401 });
   }
 

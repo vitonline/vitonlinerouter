@@ -3,6 +3,7 @@ import { FORMATS } from "../formats.js";
 import { ROLE, CLAUDE_BLOCK, MODEL_FALLBACK } from "../schema/index.js";
 import { fromOpenAIFinish } from "../concerns/finishReason.js";
 import { extractReasoningText } from "../concerns/reasoning.js";
+import { fallbackToolCallId } from "../concerns/toolCall.js";
 
 // Legacy "proxy_" prefix used by older request translators. Response strips it
 // defensively so tool names from such turns resolve back (e.g. proxy_Read → Read
@@ -183,17 +184,24 @@ export function openaiToClaudeResponse(chunk, state) {
   if (delta?.tool_calls) {
     for (const tc of delta.tool_calls) {
       const idx = tc.index ?? 0;
+      state.pendingToolCalls ??= new Map();
+      const pending = state.pendingToolCalls.get(idx) || { id: null, name: "", arguments: "" };
+      if (tc.id) pending.id = tc.id;
+      if (tc.function?.name) pending.name = tc.function.name;
+      if (tc.function?.arguments) pending.arguments += tc.function.arguments;
+      state.pendingToolCalls.set(idx, pending);
 
       // GLM/fireworks repeats id+null-name on every arg chunk; open block once per idx
-      if (tc.id && !state.toolCalls.has(idx)) {
+      if (pending.name && !state.toolCalls.has(idx)) {
         stopThinkingBlock(state, results);
         stopTextBlock(state, results);
 
         const toolBlockIndex = state.nextBlockIndex++;
-        state.toolCalls.set(idx, { id: tc.id, name: tc.function?.name || "", blockIndex: toolBlockIndex });
+        const callId = pending.id || fallbackToolCallId(idx);
+        state.toolCalls.set(idx, { id: callId, name: pending.name, blockIndex: toolBlockIndex });
 
         // Strip prefix from tool name for response
-        let toolName = tc.function?.name || "";
+        let toolName = pending.name;
         if (toolName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) {
           toolName = toolName.slice(CLAUDE_OAUTH_TOOL_PREFIX.length);
         }
@@ -203,19 +211,20 @@ export function openaiToClaudeResponse(chunk, state) {
           index: toolBlockIndex,
           content_block: {
             type: CLAUDE_BLOCK.TOOL_USE,
-            id: tc.id,
+            id: callId,
             name: toolName,
             input: {}
           }
         });
       }
 
-      if (tc.function?.arguments) {
+      if (pending.arguments) {
         const toolInfo = state.toolCalls.get(idx);
         if (toolInfo) {
           // Buffer args instead of streaming — sanitize at finish to fix bad params
           if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
-          state.toolArgBuffers.set(idx, (state.toolArgBuffers.get(idx) || "") + tc.function.arguments);
+          state.toolArgBuffers.set(idx, (state.toolArgBuffers.get(idx) || "") + pending.arguments);
+          pending.arguments = "";
         }
       }
     }

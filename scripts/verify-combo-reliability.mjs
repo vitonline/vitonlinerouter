@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const dir = path.join(process.env.APPDATA, 'flagshiprouter');
+const token = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'machine-id'), 'utf8').trim() + 'fr-cli-auth' + fs.readFileSync(path.join(dir, 'auth/cli-secret'), 'utf8').trim()).digest('hex').slice(0, 16);
+const response = await fetch('http://127.0.0.1:20128/api/combos', { headers: { 'x-fr-cli-token': token } });
+assert.equal(response.status, 200);
+const combo = (await response.json()).combos.find(c => c.name === 'MyDefaultProvider');
+assert.ok(combo?.health);
+assert.equal(combo.health.maxAttempts, 3);
+assert.equal(combo.health.selectionTimeoutSeconds, 60);
+assert.equal(combo.health.eligible + combo.health.skipped, combo.models.length);
+const report = { name: combo.name, members: combo.models.length, health: combo.health, checkedAt: new Date().toISOString() };
+console.log(JSON.stringify(report));
+fs.writeFileSync('combo-reliability-verification.json', JSON.stringify(report, null, 2));

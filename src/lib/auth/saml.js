@@ -73,13 +73,6 @@ export function getSamlBaseUrl(request, settings) {
   }
 
   if (request) {
-    const forwardedProto = request?.headers?.get?.("x-forwarded-proto") || "";
-    const forwardedHost = request?.headers?.get?.("x-forwarded-host") || "";
-    const host = forwardedHost || request?.headers?.get?.("host") || "";
-    if (host) {
-      const protocol = (forwardedProto || new URL(request.url).protocol || "http:").replace(/:$/, "");
-      return `${protocol}://${host}`.replace(/\/+$/, "");
-    }
     if (request.url) {
       return trimTrailingSlashes(new URL(request.url).origin);
     }
@@ -132,6 +125,7 @@ export async function buildSamlAuthorizeUrl(request, settings) {
  * @returns {Promise<object>}
  */
 export async function validateSamlResponse(request, body, expectedRequestId, settings) {
+  if (!expectedRequestId) throw new Error("Missing SAML request state");
   if (!settings?.samlCert) {
     throw new Error("IdP X.509 Certificate (samlCert) is missing or not configured");
   }

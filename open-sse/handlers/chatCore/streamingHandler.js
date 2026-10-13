@@ -92,7 +92,7 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     ? buildAbortedResponsesTerminalBytes
     : (message) => buildStreamErrorBytes(HTTP_STATUS.GATEWAY_TIMEOUT, message, sourceFormat);
   const stallTimeoutMs = PROVIDERS[provider]?.stallTimeoutMs || STREAM_STALL_TIMEOUT_MS;
-  const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs);
+  const transformedBody = pipeWithDisconnect(providerResponse, transformStream, streamController, onAbortTerminal, stallTimeoutMs, status => onStreamComplete?.({ status }, null, null));
 
   saveRequestDetail(buildRequestDetail({
     provider, model, connectionId,
@@ -103,7 +103,7 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
     providerResponse: "[Streaming - raw response not captured]",
     response: { content: "[Streaming in progress...]", thinking: null, type: "streaming" },
     pxpipe,
-    status: "success"
+    status: "in_progress"
   }, { id: streamDetailId })).catch(err => {
     console.error("[RequestDetail] Failed to save streaming request:", err.message);
   });
@@ -119,8 +119,11 @@ export async function handleStreamingResponse({ providerResponse, provider, mode
  */
 export function buildOnStreamComplete({ provider, model, connectionId, apiKey, requestStartTime, body, stream, finalBody, translatedBody, clientRawRequest, pxpipe, reqTag, log }) {
   const streamDetailId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  let recorded = false;
 
   const onStreamComplete = (contentObj, usage, ttftAt) => {
+    if (recorded) return;
+    recorded = true;
     const latency = {
       ttft: ttftAt ? ttftAt - requestStartTime : Date.now() - requestStartTime,
       total: Date.now() - requestStartTime
@@ -137,13 +140,13 @@ export function buildOnStreamComplete({ provider, model, connectionId, apiKey, r
       providerResponse: safeContent,
       response: { content: safeContent, thinking: safeThinking, type: "streaming" },
       pxpipe,
-      status: "success"
+      status: contentObj?.status || "success"
     }, { id: streamDetailId })).catch(err => {
       console.error("[RequestDetail] Failed to update streaming content:", err.message);
     });
 
     // Persist stream usage to DB (no console line; the "📊 done" line below is authoritative)
-    saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint, label: "STREAM USAGE", silent: true });
+    saveUsageStats({ provider, model, tokens: usage, connectionId, apiKey, endpoint: clientRawRequest?.endpoint, budgetReservationId: clientRawRequest?.budgetReservationId, requestId: clientRawRequest?.usageEventId, label: "STREAM USAGE", silent: true });
     if (log?.line) log.line(reqTag, "📊", formatDoneLine({ usage, latency }));
   };
 

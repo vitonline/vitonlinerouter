@@ -1,0 +1,51 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, expect, it, vi } from "vitest";
+import { createSqlJsAdapter } from "../../src/lib/db/adapters/sqlJsAdapter.js";
+
+const state = vi.hoisted(() => ({ db: null }));
+vi.mock("../../src/lib/db/driver.js", () => ({ getAdapter: async () => state.db }));
+import { saveModelTest, getModelTests } from "../../src/lib/db/repos/modelTestsRepo.js";
+let directory;
+afterEach(() => { state.db?.close(); state.db = null; if (directory) fs.rmSync(directory, { recursive: true, force: true }); });
+
+it("persists sanitized canonical test results across reopening and replaces stale failures", async () => {
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), "model-test-history-"));
+  const file = path.join(directory, "tests.sqlite");
+  state.db = await createSqlJsAdapter(file);
+  state.db.exec("CREATE TABLE kv(scope TEXT, key TEXT, value TEXT, PRIMARY KEY(scope,key))");
+  await saveModelTest("qw/qwen3.6-plus", "llm", { ok: false, error: "401 Incorrect API key sk-private-secret", apiKey: "never-store" });
+  state.db.close();
+  state.db = await createSqlJsAdapter(file);
+  const saved = (await getModelTests())["qwencloud/qwen3.6-plus"];
+  expect(saved.reason).toBe("Authentication rejection");
+  expect(saved.error).not.toContain("sk-private-secret");
+  expect(saved).not.toHaveProperty("apiKey");
+  expect(saved.testedAt).toMatch(/^\d{4}-/);
+  await saveModelTest("qwencloud/qwen3.6-plus", "llm", { ok: true, latencyMs: 0 });
+  const records = await getModelTests();
+  expect(Object.keys(records)).toEqual(["qwencloud/qwen3.6-plus"]);
+  expect(records["qwencloud/qwen3.6-plus"]).toMatchObject({ ok: true, error: "", latencyMs: 0 });
+  expect(records["qwencloud/qwen3.6-plus"].attempts).toHaveLength(2);
+  await saveModelTest("qwencloud/qwen3.6-plus", "llm", { ok: false, capability: "tools", error: "Tools unsupported" });
+  const withCapability = (await getModelTests())["qwencloud/qwen3.6-plus"];
+  expect(withCapability.ok).toBe(true);
+  expect(withCapability.capabilities.tools.ok).toBe(false);
+  for (let index = 0; index < 25; index++) await saveModelTest("qwencloud/qwen3.6-plus", "llm", { ok: true });
+  expect((await getModelTests())["qwencloud/qwen3.6-plus"].attempts).toHaveLength(20);
+});
+it("persists stable custom provider identity and accepted reasoning without recording a pass", async () => {
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), "custom-model-test-"));
+  state.db = await createSqlJsAdapter(path.join(directory, "tests.sqlite"));
+  state.db.exec("CREATE TABLE kv(scope TEXT, key TEXT, value TEXT, PRIMARY KEY(scope,key))");
+  const node = { id: "openai-compatible-chat-example", prefix: "custom-test" };
+  await saveModelTest("custom-test/org/model", "llm", { ok: false, connectionAccepted: true, verification: "reasoning_only", note: "reasoning-only response sk-secret", error: "No usable answer" }, [node]);
+  const record = (await getModelTests())["custom-test/org/model"];
+  expect(record).toMatchObject({ providerId: node.id, ok: false, connectionAccepted: true, verification: "reasoning_only", reason: "Reasoning only; no usable answer" });
+  expect(record.note).not.toContain("sk-secret");
+  await saveModelTest("renamed/org/model", "llm", { ok: true }, [{ ...node, prefix: "renamed" }]);
+  const renamed = await getModelTests();
+  expect(Object.keys(renamed)).toEqual(["renamed/org/model"]);
+  expect(renamed["renamed/org/model"].attempts).toHaveLength(2);
+});

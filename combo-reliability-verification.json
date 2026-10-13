@@ -1,0 +1,11 @@
+{
+  "name": "MyDefaultProvider",
+  "members": 625,
+  "health": {
+    "eligible": 611,
+    "skipped": 14,
+    "maxAttempts": 3,
+    "selectionTimeoutSeconds": 60
+  },
+  "checkedAt": "2026-10-12T21:33:06.389Z"
+}

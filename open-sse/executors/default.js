@@ -8,6 +8,14 @@ import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { stripUnsupportedParams } from "../translator/concerns/paramSupport.js";
 import { extractClaudeSessionIdFromUserId } from "../utils/claudeCloaking.js";
+import { ROLE } from "../translator/schema/roles.js";
+import { OPENAI_BLOCK } from "../translator/schema/blocks.js";
+import { REFRESH_TIMEOUT_MS } from "../config/runtimeConfig.js";
+
+const refreshFetch = (url, options, proxyOptions) => proxyAwareFetch(url, {
+  ...options,
+  signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(REFRESH_TIMEOUT_MS)]) : AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+}, proxyOptions);
 
 // Auth header descriptors — derived from registry transport.auth, fallback to hardcoded defaults.
 const BEARER = { combined: true, header: "Authorization", scheme: "bearer" };
@@ -69,7 +77,16 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body) {
-    const transformed = this.applyJsonSchemaFallback(body);
+    let transformed = this.applyJsonSchemaFallback(body);
+    if (this.config.quirks?.systemMessagesFirst && Array.isArray(transformed?.messages)) {
+      const instructions = transformed.messages.filter(m => m.role === ROLE.SYSTEM || m.role === ROLE.DEVELOPER);
+      if (instructions.length) {
+        const content = instructions.every(m => typeof m.content === "string")
+          ? instructions.map(m => m.content).join("\n\n")
+          : instructions.flatMap(m => Array.isArray(m.content) ? m.content : [{ type: OPENAI_BLOCK.TEXT, text: String(m.content || "") }]);
+        transformed = { ...transformed, messages: [{ ...instructions[0], role: ROLE.SYSTEM, content }, ...transformed.messages.filter(m => m.role !== ROLE.SYSTEM && m.role !== ROLE.DEVELOPER)] };
+      }
+    }
 
     if (transformed && typeof transformed === "object") {
       // quirk: some openai-compatible providers reject Anthropic's client_metadata field
@@ -84,12 +101,12 @@ export class DefaultExecutor extends BaseExecutor {
 
   // Fallback json_schema → json_object for openai-compatible providers without native Structured Output.
   applyJsonSchemaFallback(body) {
-    if (!this.provider?.startsWith?.("openai-compatible-")) return body;
+    if (!this.provider?.startsWith?.("openai-compatible-") && !this.config.quirks?.jsonSchemaFallback) return body;
     const rf = body?.response_format;
     if (rf?.type !== "json_schema" || !rf.json_schema?.schema) return body;
 
     const schemaJson = JSON.stringify(rf.json_schema.schema, null, 2);
-    const prompt = `You must respond with valid JSON that strictly follows this JSON schema:\n\`\`\`json\n${schemaJson}\n\`\`\`\nRespond ONLY with the JSON object, no other text.`;
+    const prompt = `You must respond with valid JSON that strictly follows this JSON schema:\n\`\`\`json\n${schemaJson}\n\`\`\`\nYou may call provided tools first. Your final answer must contain ONLY the JSON object, no other text.`;
 
     const messages = Array.isArray(body.messages) ? body.messages.map(m => ({ ...m })) : [];
     const sys = messages.find(m => m.role === "system");
@@ -259,7 +276,7 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   async refreshWithJSON(url, body, proxyOptions = null) {
-    const response = await proxyAwareFetch(url, {
+    const response = await refreshFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify(body)
@@ -270,7 +287,7 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   async refreshWithForm(url, params, proxyOptions = null) {
-    const response = await proxyAwareFetch(url, {
+    const response = await refreshFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
       body: new URLSearchParams(params)
@@ -282,7 +299,7 @@ export class DefaultExecutor extends BaseExecutor {
 
   async refreshIflow(refreshToken, proxyOptions = null) {
     const basicAuth = btoa(`${PROVIDERS.iflow.clientId}:${PROVIDERS.iflow.clientSecret}`);
-    const response = await proxyAwareFetch(OAUTH_ENDPOINTS.iflow.token, {
+    const response = await refreshFetch(OAUTH_ENDPOINTS.iflow.token, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Authorization": `Basic ${basicAuth}` },
       body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: PROVIDERS.iflow.clientId, client_secret: PROVIDERS.iflow.clientSecret })
@@ -293,7 +310,7 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   async refreshKiro(refreshToken, proxyOptions = null) {
-    const response = await proxyAwareFetch(PROVIDERS.kiro.tokenUrl, {
+    const response = await refreshFetch(PROVIDERS.kiro.tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": "kiro-cli/1.0.0" },
       body: JSON.stringify({ refreshToken })
@@ -304,7 +321,7 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   async refreshCline(refreshToken, proxyOptions = null) {
-    const response = await proxyAwareFetch(PROVIDERS.cline.refreshUrl, {
+    const response = await refreshFetch(PROVIDERS.cline.refreshUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({ refreshToken, grantType: "refresh_token", clientType: "extension" })
@@ -327,7 +344,7 @@ export class DefaultExecutor extends BaseExecutor {
     const cfg = PROVIDERS.kimi || PROVIDERS["kimi-coding"];
     if (!cfg?.refreshUrl || !cfg?.clientId) return null;
     const kimiHeaders = buildKimiHeaders(credentials?.providerSpecificData?.deviceId);
-    const response = await proxyAwareFetch(cfg.refreshUrl, {
+    const response = await refreshFetch(cfg.refreshUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

@@ -121,7 +121,9 @@
     "usage": {
       "oauthUrl": "https://api.anthropic.com/api/oauth/usage",
       "orgUrl": "https://api.anthropic.com/v1/organizations/{org_id}/usage",
-      "settingsUrl": "https://api.anthropic.com/v1/settings"
+      "settingsUrl": "https://api.anthropic.com/v1/settings",
+      "profileUrl": "https://api.anthropic.com/api/oauth/profile",
+      "resetUrl": "https://api.anthropic.com/api/organizations/{org_id}/reset_rate_limits"
     },
     "clientId": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
     "tokenUrl": "https://api.anthropic.com/v1/oauth/token"
@@ -199,10 +201,11 @@
     "baseUrl": "https://chatgpt.com/backend-api/codex/responses",
     "format": "openai-responses",
     "forceStream": true,
-    "cliVersion": "0.154.0",
+    "cliVersion": "0.155.0",
     "headers": {
       "originator": "codex_cli_rs",
-      "User-Agent": "codex_cli_rs/0.154.0"
+      "User-Agent": "codex_cli_rs/0.155.0",
+      "version": "0.155.0"
     },
     "usage": {
       "url": "https://chatgpt.com/backend-api/wham/usage",
@@ -1086,6 +1089,14 @@
     },
     "format": "openai"
   },
+  "tokenharbor": {
+    "baseUrl": "https://tokenharbor.ai/v1/chat/completions",
+    "validateUrl": "https://tokenharbor.ai/v1/models",
+    "retry": {
+      "429": 2
+    },
+    "format": "openai"
+  },
   "dahl": {
     "baseUrl": "https://inference.dahl.global/v1/chat/completions",
     "validateUrl": "https://inference.dahl.global/v1/models",
@@ -1103,15 +1114,114 @@
   },
   "bai": {
     "baseUrl": "https://api.b.ai/v1/chat/completions",
+    "format": "openai",
+    "auth": {
+      "combined": true,
+      "header": "x-api-key",
+      "scheme": "raw"
+    },
     "validateUrl": "https://api.b.ai/v1/models",
-    "format": "openai"
+    "modelsFetcher": {
+      "url": "https://api.b.ai/v1/models",
+      "type": "openai"
+    }
   },
-  "tokenharbor": {
-    "baseUrl": "https://tokenharbor.ai/v1/chat/completions",
-    "validateUrl": "https://tokenharbor.ai/v1/models",
+  "xkiro": {
+    "baseUrl": "https://api.xkiro.com/v1/chat/completions",
+    "validateUrl": "https://api.xkiro.com/v1/models",
     "retry": {
       "429": 2
     },
     "format": "openai"
+  },
+  "apinex": {
+    "baseUrl": "https://api.apinex.bond/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://api.apinex.bond/v1/models",
+    "modelsFetcher": {
+      "url": "https://api.apinex.bond/v1/models",
+      "type": "openai"
+    }
+  },
+  "apmix": {
+    "baseUrl": "https://api.apmix.ai/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://api.apmix.ai/v1/models",
+    "modelsFetcher": {
+      "url": "https://api.apmix.ai/v1/models",
+      "type": "openai"
+    }
+  },
+  "modelrouter": {
+    "baseUrl": "https://modelrouter.id/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://modelrouter.id/v1/models",
+    "modelsFetcher": {
+      "url": "https://modelrouter.id/v1/models",
+      "type": "openai"
+    }
+  },
+  "zenmux": {
+    "baseUrl": "https://zenmux.ai/api/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://zenmux.ai/api/v1/models",
+    "modelsFetcher": {
+      "url": "https://zenmux.ai/api/v1/models",
+      "type": "openai"
+    }
+  },
+  "excelnt": {
+    "baseUrl": "https://excelnt.ai/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://excelnt.ai/v1/models",
+    "modelsFetcher": {
+      "url": "https://excelnt.ai/v1/models",
+      "type": "openai"
+    }
+  },
+  "unorouter": {
+    "baseUrl": "https://api.unorouter.com/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://api.unorouter.com/v1/models",
+    "modelsFetcher": {
+      "url": "https://api.unorouter.com/v1/models",
+      "type": "openai"
+    }
+  },
+  "teamorouter": {
+    "baseUrl": "https://api.teamorouter.com/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://api.teamorouter.com/v1/models",
+    "modelsFetcher": {
+      "url": "https://api.teamorouter.com/v1/models",
+      "type": "openai"
+    }
+  },
+  "experientiallabs": {
+    "baseUrl": "https://api.experientiallabs.ai/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://api.experientiallabs.ai/v1/models",
+    "modelsFetcher": {
+      "url": "https://api.experientiallabs.ai/v1/models",
+      "type": "openai"
+    }
+  },
+  "qwencloud": {
+    "baseUrl": "https://maas.qwencloudapi.com/compatible-mode/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://maas.qwencloudapi.com/compatible-mode/v1/models",
+    "modelsFetcher": {
+      "url": "https://maas.qwencloudapi.com/compatible-mode/v1/models",
+      "type": "openai"
+    }
+  },
+  "lebang": {
+    "baseUrl": "https://lebang.si/v1/chat/completions",
+    "format": "openai",
+    "validateUrl": "https://lebang.si/v1/models",
+    "modelsFetcher": {
+      "url": "https://lebang.si/v1/models",
+      "type": "openai"
+    }
   }
 }

@@ -25,7 +25,7 @@ export function getDataDir() {
 
   try {
     fs.mkdirSync(configured, { recursive: true });
-    return configured;
+    return path.resolve(configured);
   } catch (e) {
     if (e?.code === "EACCES" || e?.code === "EPERM") {
       console.warn(`[DATA_DIR] '${configured}' not writable → fallback ~/.${APP_NAME}`);

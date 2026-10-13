@@ -90,7 +90,8 @@ export async function exportDb() {
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'mitmAlias'`)) out.mitmAlias[r.key] = parseJson(r.value);
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'pricing'`)) out.pricing[r.key] = parseJson(r.value);
 
-  return out;
+  const { configurationExport } = await import("@/shared/utils/configurationExport");
+  return configurationExport(out);
 }
 
 export async function importDb(payload) {
@@ -100,18 +101,20 @@ export async function importDb(payload) {
   const db = await getAdapter();
 
   db.transaction(() => {
+    const oldSettings = parseJson(db.get("SELECT data FROM settings WHERE id = 1")?.data, {});
     // Wipe all tables (keep _meta)
     db.run(`DELETE FROM settings`);
     db.run(`DELETE FROM providerConnections`);
     db.run(`DELETE FROM providerNodes`);
     db.run(`DELETE FROM proxyPools`);
-    db.run(`DELETE FROM apiKeys`);
+    if (!payload.configurationOnly) db.run(`DELETE FROM apiKeys`);
     db.run(`DELETE FROM combos`);
     db.run(`DELETE FROM kv WHERE scope IN ('modelAliases', 'customModels', 'mitmAlias', 'pricing')`);
 
     // Settings
     if (payload.settings) {
-      db.run(`INSERT INTO settings(id, data) VALUES(1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`, [stringifyJson(payload.settings)]);
+      const safeSettings = payload.configurationOnly ? { ...payload.settings, password: oldSettings.password, oidcClientSecret: oldSettings.oidcClientSecret, requireLogin: true, requireApiKey: true } : payload.settings;
+      db.run(`INSERT INTO settings(id, data) VALUES(1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`, [stringifyJson(safeSettings)]);
     }
 
     for (const c of payload.providerConnections || []) {
@@ -135,7 +138,7 @@ export async function importDb(payload) {
         [id, isActive === false ? 0 : 1, testStatus || "unknown", stringifyJson(rest), createdAt || new Date().toISOString(), updatedAt || new Date().toISOString()]
       );
     }
-    for (const k of payload.apiKeys || []) {
+    for (const k of payload.configurationOnly ? [] : payload.apiKeys || []) {
       db.run(
         `INSERT OR REPLACE INTO apiKeys(id, key, name, machineId, isActive, createdAt) VALUES(?, ?, ?, ?, ?, ?)`,
         [k.id, k.key, k.name || null, k.machineId || null, k.isActive === false ? 0 : 1, k.createdAt || new Date().toISOString()]

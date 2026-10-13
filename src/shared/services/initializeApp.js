@@ -1,4 +1,5 @@
 import os from "os";
+import shutdown from "../../../shutdown.cjs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
@@ -59,10 +60,8 @@ export async function initializeApp() {
         try { removeAllDNSEntriesSync(); } catch { /* best effort */ }
         try { killAllBridges(); } catch { /* best effort */ }
         killCloudflared();
-        process.exit();
       };
-      process.on("SIGINT", cleanup);
-      process.on("SIGTERM", cleanup);
+      shutdown.registerShutdown("application", cleanup);
       process.on("exit", () => { try { removeAllDNSEntriesSync(); } catch { /* ignore */ } });
       g.signalHandlersRegistered = true;
     }
@@ -83,6 +82,9 @@ export async function initializeApp() {
 async function runHeavyStartup() {
   await cleanupProviderConnections();
   const settings = await getSettings();
+  import("@/shared/services/modelHealthChecks")
+    .then(({ startModelHealthChecks }) => startModelHealthChecks())
+    .catch(() => console.warn("[ModelHealth] Scheduler could not start"));
 
   // Auto-resume tunnel (once per process)
   if (settings.tunnelEnabled && !g.tunnelAutoResumed) {

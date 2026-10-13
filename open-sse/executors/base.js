@@ -125,8 +125,8 @@ export class BaseExecutor {
     };
 
     for (let urlIndex = 0; urlIndex < fallbackCount; urlIndex++) {
-      const url = this.buildUrl(model, stream, urlIndex, credentials);
-      const transformedBody = this.transformRequest(model, body, stream, credentials);
+      const url = this.buildUrl(model, stream, urlIndex, credentials, body);
+      const transformedBody = this.transformRequest(model, structuredClone(body), stream, credentials);
       const headers = this.buildHeaders(credentials, stream, url, model, transformedBody);
 
       if (!retryAttemptsByUrl[urlIndex]) retryAttemptsByUrl[urlIndex] = 0;

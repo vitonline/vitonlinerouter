@@ -79,6 +79,7 @@ export async function POST(request) {
       message: secretProbe.message,
     });
   } catch (error) {
-    return NextResponse.json({ error: error.message || "OIDC test failed" }, { status: 500 });
+    console.error("[OIDC test]", error);
+    return NextResponse.json({ error: "OIDC test failed; check the server logs" }, { status: 500 });
   }
 }

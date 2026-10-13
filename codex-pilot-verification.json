@@ -1,0 +1,70 @@
+{
+  "tool": "Codex CLI",
+  "model": "intern/deepseek-v4-flash-0731",
+  "exitCode": 0,
+  "toolDeclarations": [
+    {
+      "type": "function",
+      "name": "exec_command"
+    },
+    {
+      "type": "function",
+      "name": "write_stdin"
+    },
+    {
+      "type": "function",
+      "name": "request_user_input"
+    },
+    {
+      "type": "function",
+      "name": "view_image"
+    },
+    {
+      "type": "function",
+      "name": "get_goal"
+    },
+    {
+      "type": "function",
+      "name": "create_goal"
+    },
+    {
+      "type": "function",
+      "name": "update_goal"
+    },
+    {
+      "type": "web_search"
+    }
+  ],
+  "streamedEvents": 6,
+  "eventTypes": [
+    "thread.started:",
+    "item.completed:error",
+    "turn.started:",
+    "item.completed:agent_message",
+    "turn.completed:"
+  ],
+  "toolCallObserved": false,
+  "toolExecutionSucceeded": false,
+  "commandExecutions": [],
+  "structuredFinalPassed": false,
+  "errors": [
+    "Model metadata for `intern/deepseek-v4-flash-0731` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.",
+    "Exceeded skills context budget. All skill descriptions were removed and 673 additional skills were not included in the model-visible skills list."
+  ],
+  "fixtureFinalMessage": "{\"marker\": \"placeholder\"}",
+  "at": "2026-10-12T22:42:29.970Z",
+  "stderrSummary": "api/plugins/featured?platform=codex failed with status 401 Unauthorized: {\"detail\":\"Unauthorized\"}\n2026-10-12T22:42:23.464329Z ERROR codex_skills_extension::loader::host: skills scan reached its traversal limit (root: file:///C:/Users/HUAWEI/.agents/skills)\n2026-10-12T22:42:23.810095Z ERROR codex_core::session::session: failed to load skill C:\\Users\\HUAWEI\\.agents\\skills\\azure-app-onboard\\deploy\\SKILL.md: missing YAML frontmatter delimited by ---\n2026-10-12T22:42:23.810148Z ERROR codex_core::session::session: failed to load skill C:\\Users\\HUAWEI\\.agents\\skills\\azure-app-onboard\\prepare\\SKILL.md: missing YAML frontmatter delimited by ---\n2026-10-12T22:42:23.810156Z ERROR codex_core::session::session: failed to load skill C:\\Users\\HUAWEI\\.agents\\skills\\azure-app-onboard\\scaffold\\SKILL.md: missing YAML frontmatter delimited by ---\n2026-10-12T22:42:23.885122Z  WARN codex_models_manager::model_info: Unknown model intern/deepseek-v4-flash-0731 is used. This will use fallback model metadata.\n",
+  "responseEvents": [
+    {
+      "type": "response.output_item.added",
+      "itemType": "message"
+    },
+    {
+      "type": "response.output_item.done",
+      "itemType": "message"
+    },
+    {
+      "type": "response.completed"
+    }
+  ]
+}

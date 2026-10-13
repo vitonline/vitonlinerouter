@@ -1,0 +1,9 @@
+{
+  "tool": "Claude Code",
+  "upstreamRequestObserved": true,
+  "callerTerminated": true,
+  "activeRequestsReturnedToBaseline": true,
+  "streamedEventsObserved": true,
+  "at": "2026-10-12T23:00:31.945Z",
+  "routingCancellationRecorded": true
+}

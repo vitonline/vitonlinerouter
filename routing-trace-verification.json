@@ -1,0 +1,9 @@
+{
+  "selectedModel": "intern/glm-5.3",
+  "attempts": 1,
+  "latencyMs": 3950,
+  "traceIdMatchesHeader": true,
+  "credentialsAndContentOmitted": true,
+  "at": "2026-10-12T22:59:41.577Z",
+  "directModelTraceVerified": true
+}

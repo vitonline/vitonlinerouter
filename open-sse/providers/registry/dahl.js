@@ -19,6 +19,7 @@ export default {
   },
   category: "apikey",
   authType: "apikey",
+  hasFree: true,
   transport: {
     baseUrl: "https://inference.dahl.global/v1/chat/completions",
     validateUrl: "https://inference.dahl.global/v1/models",

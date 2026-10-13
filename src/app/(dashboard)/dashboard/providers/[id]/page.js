@@ -15,6 +15,8 @@ import { translate } from "@/i18n/runtime";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 import ModelRow from "./ModelRow";
+import { modelTestResult, modelTestKey } from "@/shared/utils/modelTestResult";
+import { useModelTestHistory, notifyModelTestsChanged } from "@/shared/hooks/useModelTestHistory";
 import PassthroughModelsSection from "./PassthroughModelsSection";
 import CompatibleModelsSection from "./CompatibleModelsSection";
 import ConnectionRow from "./ConnectionRow";
@@ -39,8 +41,11 @@ export default function ProviderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const providerId = params.id;
+  const history = useModelTestHistory();
   const { getCaps } = useModelCaps();
   const [connections, setConnections] = useState([]);
+  const [clearingCooldown, setClearingCooldown] = useState(false);
+  const [cooldownMessage, setCooldownMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [providerNode, setProviderNode] = useState(null);
   const [proxyPools, setProxyPools] = useState([]);
@@ -1127,6 +1132,27 @@ export default function ProviderDetailPage() {
     </Modal>
   );
 
+  const handleClearCooldown = async () => {
+    setClearingCooldown(true);
+    setCooldownMessage("");
+    try {
+      const res = await fetch("/api/models/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clearCooldown", provider: providerId, model: "__all" }),
+      });
+      if (!res.ok) throw new Error("Failed to clear cooldown");
+      setModelTestResults({});
+      setModelsTestError("");
+      await fetchConnections();
+      setCooldownMessage("Cooldown cleared. Test a model to check its current status.");
+    } catch (error) {
+      setCooldownMessage(error.message || "Failed to clear cooldown");
+    } finally {
+      setClearingCooldown(false);
+    }
+  };
+
   const handleTestModel = async (modelId) => {
     if (testingModelIds.has(modelId)) return;
     setTestingModelIds((prev) => new Set(prev).add(modelId));
@@ -1137,10 +1163,12 @@ export default function ProviderDetailPage() {
         body: JSON.stringify({ model: `${providerStorageAlias}/${modelId}` }),
       });
       const data = await res.json();
-      setModelTestResults((prev) => ({ ...prev, [modelId]: data.ok ? "ok" : "error" }));
-      setModelsTestError(data.ok ? "" : (data.error || "Model not reachable"));
+      const result = modelTestResult(data);
+      setModelTestResults((prev) => ({ ...prev, [modelId]: result }));
+      notifyModelTestsChanged();
+      setModelsTestError(data.ok ? "" : result.error);
     } catch {
-      setModelTestResults((prev) => ({ ...prev, [modelId]: "error" }));
+      setModelTestResults((prev) => ({ ...prev, [modelId]: modelTestResult({ ok: false, error: "Network error" }) }));
       setModelsTestError("Network error");
     } finally {
       setTestingModelIds((prev) => { const n = new Set(prev); n.delete(modelId); return n; });
@@ -1202,7 +1230,7 @@ export default function ProviderDetailPage() {
                 handleDeleteAlias(model.alias);
               }
             }}
-            testStatus={modelTestResults[model.id]}
+            testStatus={modelTestResults[model.id] || history.results[modelTestKey(`${providerStorageAlias}/${model.id}`)]}
             onTest={connections.length > 0 || isFreeNoAuth ? () => handleTestModel(model.id) : undefined}
             isTesting={testingModelIds.has(model.id)}
             isCustom
@@ -1228,7 +1256,7 @@ export default function ProviderDetailPage() {
               onCopy={copy}
               onSetAlias={(alias) => handleSetAlias(model.id, alias, providerStorageAlias)}
               onDeleteAlias={() => handleDeleteAlias(existingAlias)}
-              testStatus={modelTestResults[model.id]}
+              testStatus={modelTestResults[model.id] || history.results[modelTestKey(`${providerStorageAlias}/${model.id}`)]}
               onTest={connections.length > 0 || isFreeNoAuth ? () => handleTestModel(model.id) : undefined}
               isTesting={testingModelIds.has(model.id)}
               isFree={model.isFree}
@@ -1537,6 +1565,10 @@ export default function ProviderDetailPage() {
                       Delete Selected ({selectedConnectionIds.length})
                     </Button>
                   )}
+                  <Button size="sm" variant="secondary" icon="restart_alt" onClick={handleClearCooldown} disabled={clearingCooldown}>
+                    {clearingCooldown ? "Clearing..." : "Clear cooldown"}
+                  </Button>
+                  {cooldownMessage && <span role="status" className="text-xs text-text-muted">{cooldownMessage}</span>}
                   <Button
                     size="sm"
                     variant="secondary"

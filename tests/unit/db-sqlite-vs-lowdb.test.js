@@ -17,7 +17,9 @@ beforeAll(async () => {
   await sqliteDb.initDb();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  const { getAdapter } = await import("@/lib/db/driver.js");
+  (await getAdapter()).close();
   if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
   if (originalDataDir === undefined) delete process.env.DATA_DIR;
   else process.env.DATA_DIR = originalDataDir;
@@ -213,11 +215,11 @@ describe("DB SQLite layer — public API parity", () => {
   });
 
   it("providerNodes: CRUD", async () => {
-    const n = await sqliteDb.createProviderNode({ type: "openai", name: "Test", baseUrl: "https://api.test", apiType: "openai" });
+    const n = await sqliteDb.createProviderNode({ type: "openai-compatible", prefix: "test-node", name: "Test", baseUrl: "https://api.test", apiType: "chat" });
     expect(n.id).toBeDefined();
-    expect(n.baseUrl).toBe("https://api.test");
+    expect(n.baseUrl).toBe("https://api.test/v1");
 
-    const all = await sqliteDb.getProviderNodes({ type: "openai" });
+    const all = await sqliteDb.getProviderNodes({ type: "openai-compatible" });
     expect(all.find((x) => x.id === n.id)).toBeDefined();
 
     await sqliteDb.updateProviderNode(n.id, { name: "Test2" });

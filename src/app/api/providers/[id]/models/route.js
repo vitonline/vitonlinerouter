@@ -13,6 +13,8 @@ import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { resolveCursorModels } from "open-sse/services/cursorModels.js";
 import { resolveZedModels } from "open-sse/shared/zedAuth.js";
 import { resolveClineModels, resolveClinepassModels } from "open-sse/services/clinepassModels.js";
+import REGISTRY from "open-sse/providers/registry/index.js";
+import { registryModelsFetcher } from "@/shared/utils/catalogModels";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -308,6 +310,7 @@ const PROVIDER_MODELS_CONFIG = {
   atria: createOpenAIModelsConfig("https://api.atria-asi.ai/v1/models"),
   agnes: createOpenAIModelsConfig("https://apihub.agnes-ai.com/v1/models"),
   bai: createOpenAIModelsConfig("https://api.b.ai/v1/models"),
+  xkiro: createOpenAIModelsConfig("https://api.xkiro.com/v1/models"),
   kimchi: {
     customResolver: async (connection) => {
       const result = await resolveKimchiModels({
@@ -608,7 +611,10 @@ export async function GET(request, { params }) {
       });
     }
 
-    const config = PROVIDER_MODELS_CONFIG[connection.provider];
+    const registryEntry = REGISTRY.find(entry => entry.id === connection.provider);
+    const fetcher = registryEntry && registryModelsFetcher(registryEntry);
+    const config = PROVIDER_MODELS_CONFIG[connection.provider] ||
+      (fetcher?.type === "openai" && fetcher.url ? createOpenAIModelsConfig(fetcher.url) : null);
     if (!config) {
       return NextResponse.json(
         { error: `Provider ${connection.provider} does not support models listing` },
@@ -651,7 +657,8 @@ export async function GET(request, { params }) {
     // Make request
     const fetchOptions = {
       method: config.method,
-      headers
+      headers,
+      signal: AbortSignal.timeout(15000),
     };
 
     if (config.body && config.method === "POST") {

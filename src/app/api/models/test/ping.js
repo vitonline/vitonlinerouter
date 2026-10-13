@@ -3,43 +3,11 @@ import { resolveProviderId } from "@/shared/constants/providers.js";
 import { unwrapClineEnvelope } from "open-sse/shared/clineEnvelope.js";
 import { UPDATER_CONFIG } from "@/shared/constants/config";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { readProbeAsset } from "./probeAssets";
 
 const CLI_TOKEN_SALT = "fr-cli-auth";
 
-function createSilentWavFile() {
-  const sampleRate = 16000;
-  const channels = 1;
-  const bitsPerSample = 16;
-  const durationMs = 250;
-  const sampleCount = Math.max(1, Math.floor((sampleRate * durationMs) / 1000));
-  const dataSize = sampleCount * channels * (bitsPerSample / 8);
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  const writeAscii = (offset, value) => {
-    for (let i = 0; i < value.length; i += 1) {
-      view.setUint8(offset + i, value.charCodeAt(i));
-    }
-  };
-
-  writeAscii(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeAscii(8, "WAVE");
-  writeAscii(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, channels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * channels * (bitsPerSample / 8), true);
-  view.setUint16(32, channels * (bitsPerSample / 8), true);
-  view.setUint16(34, bitsPerSample, true);
-  writeAscii(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  return new Blob([buffer], { type: "audio/wav" });
-}
-
-async function getInternalHeaders() {
+export async function getInternalHeaders() {
   let apiKey = null;
   try {
     const keys = await getApiKeys();
@@ -52,7 +20,8 @@ async function getInternalHeaders() {
   return headers;
 }
 
-export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:${process.env.PORT || UPDATER_CONFIG.appPort}`) {
+export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:${process.env.PORT || UPDATER_CONFIG.appPort}`, { signal } = {}) {
+  const timeoutSignal = ms => signal ? AbortSignal.any([signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
   const headers = await getInternalHeaders();
   const start = Date.now();
 
@@ -61,7 +30,7 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
       method: "POST",
       headers,
       body: JSON.stringify({ model, input: "test" }),
-      signal: AbortSignal.timeout(15000),
+      signal: timeoutSignal(15000),
     });
     const latencyMs = Date.now() - start;
     const rawText = await res.text().catch(() => "");
@@ -84,7 +53,7 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
       method: "POST",
       headers,
       body: JSON.stringify({ model, prompt: "test" }),
-      signal: AbortSignal.timeout(15000),
+      signal: timeoutSignal(120000),
     });
     const latencyMs = Date.now() - start;
     const rawText = await res.text().catch(() => "");
@@ -103,9 +72,26 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
     return { ok: true, latencyMs, error: null, status: res.status };
   }
 
+  if (kind === "tts") {
+    const res = await fetch(`${baseUrl}/api/v1/audio/speech`, {
+      method: "POST", headers,
+      body: JSON.stringify({ model, input: "Test", response_format: "mp3" }),
+      signal: timeoutSignal(30000),
+    });
+    const latencyMs = Date.now() - start;
+    if (!res.ok) {
+      const raw = await res.text();
+      let parsed; try { parsed = JSON.parse(raw); } catch {}
+      return { ok: false, latencyMs, status: res.status, error: `HTTP ${res.status}: ${String(parsed?.error?.message || parsed?.error || raw).slice(0, 500)}` };
+    }
+    const audio = await res.arrayBuffer();
+    if (!res.headers.get("content-type")?.startsWith("audio/") || !audio.byteLength) return { ok: false, latencyMs, status: res.status, error: "Provider returned no audio data for this model" };
+    return { ok: true, latencyMs, status: res.status, error: null };
+  }
+
   if (kind === "stt") {
     const form = new FormData();
-    const sampleAudio = createSilentWavFile();
+    const sampleAudio = new Blob([await readProbeAsset("transcription-probe.wav")], { type: "audio/wav" });
     form.append("file", sampleAudio, "test.wav");
     form.append("model", model);
 
@@ -113,7 +99,7 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
       method: "POST",
       headers: Object.fromEntries(Object.entries(headers).filter(([key]) => key.toLowerCase() !== "content-type")),
       body: form,
-      signal: AbortSignal.timeout(15000),
+      signal: timeoutSignal(15000),
     });
     const latencyMs = Date.now() - start;
     const rawText = await res.text().catch(() => "");
@@ -126,8 +112,8 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
     }
 
     const text = typeof parsed?.text === "string" ? parsed.text : "";
-    if (!text.trim()) {
-      return { ok: false, latencyMs, status: res.status, error: "Provider returned no transcription text for this model" };
+    if (!/speech|recognition|test/i.test(text)) {
+      return { ok: false, latencyMs, status: res.status, error: "Transcription did not match the spoken test sample" };
     }
     return { ok: true, latencyMs, error: null, status: res.status };
   }
@@ -143,7 +129,7 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
           probe: { type: "noul", instructions: "Is the customer reporting a billing problem?" },
         },
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: timeoutSignal(15000),
     });
     const latencyMs = Date.now() - start;
     const rawText = await res.text().catch(() => "");
@@ -175,7 +161,7 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
       stream: false,
       messages: [{ role: "user", content: "hi" }],
     }),
-    signal: AbortSignal.timeout(15000),
+    signal: timeoutSignal(60000),
   });
   const latencyMs = Date.now() - start;
 
@@ -220,18 +206,17 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
 
   const hasChoices = Array.isArray(parsed?.choices) && parsed.choices.length > 0;
 
-  // Soft-pass (issue #3010): a reasoning model may burn its whole budget on
-  // chain-of-thought and return finish_reason:"length" with empty content but
-  // non-empty reasoning/thinking. That's a successful connection, not a failure.
+  // Reasoning-only output proves request acceptance, but not a usable answer.
   const firstChoice = parsed?.choices?.[0] || {};
   const hasReasoning =
     firstChoice.message?.reasoning ||
     firstChoice.message?.reasoning_content ||
     firstChoice.message?.thinking ||
     firstChoice.message?.thinking_content;
-  const contentEmpty = !String(firstChoice.message?.content || "").trim();
-  if (hasChoices && firstChoice.finish_reason === "length" && contentEmpty && hasReasoning) {
-    return { ok: true, latencyMs, error: null, status: res.status, note: "reasoning-only response (length-limited)" };
+  const content = firstChoice.message?.content;
+  const hasContent = typeof content === "string" ? !!content.trim() : Array.isArray(content) && content.some(part => typeof part?.text === "string" && part.text.trim());
+  if (hasChoices && !hasContent && hasReasoning) {
+    return { ok: false, connectionAccepted: true, verification: "reasoning_only", latencyMs, error: "Provider returned reasoning but no usable answer", status: res.status, note: firstChoice.finish_reason === "length" ? "reasoning-only response (length-limited)" : "reasoning-only response" };
   }
 
   if (!hasChoices) {
@@ -243,5 +228,6 @@ export async function pingModelByKind(model, kind, baseUrl = `http://127.0.0.1:$
     };
   }
 
-  return { ok: true, latencyMs, error: null, status: res.status };
+  if (!hasContent) return { ok: false, connectionAccepted: true, verification: "connection_accepted", latencyMs, error: "Provider accepted the request but returned no usable answer", status: res.status };
+  return { ok: true, connectionAccepted: true, verification: "usable_response", latencyMs, error: null, status: res.status };
 }

@@ -17,7 +17,9 @@ beforeAll(async () => {
   await db.initDb();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  const { getAdapter } = await import("@/lib/db/driver.js");
+  (await getAdapter()).close();
   if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
   if (originalDataDir === undefined) delete process.env.DATA_DIR;
   else process.env.DATA_DIR = originalDataDir;
@@ -167,5 +169,11 @@ describe("DB Concurrency — atomic safety", () => {
     expect(g.requests).toBe(N);
     expect(g.promptTokens).toBe(N * 100);
     expect(g.completionTokens).toBe(N * 50);
+  });
+  it("deduplicates the same explicit completion event without merging separate requests", async () => {
+    await Promise.all(Array.from({ length: 10 }, () => db.saveRequestUsage({ requestId: "same-completion-event", provider: "event-probe", model: "unknown-model", tokens: { prompt_tokens: 1, completion_tokens: 1 } })));
+    const stats = await db.getUsageStats("24h");
+    expect(stats.byProvider["event-probe"].requests).toBe(1);
+    expect(stats.unknownCostRequests).toBeGreaterThanOrEqual(1);
   });
 });

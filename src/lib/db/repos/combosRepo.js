@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getAdapter } from "../driver.js";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
+import { syncDefaultProviderCombo } from "./defaultProviderCombo.js";
 
 function rowToCombo(row) {
   if (!row) return null;
@@ -16,18 +17,21 @@ function rowToCombo(row) {
 
 export async function getCombos() {
   const db = await getAdapter();
+  syncDefaultProviderCombo(db);
   const rows = db.all(`SELECT * FROM combos ORDER BY createdAt ASC`);
   return rows.map(rowToCombo);
 }
 
 export async function getComboById(id) {
   const db = await getAdapter();
+  syncDefaultProviderCombo(db);
   const row = db.get(`SELECT * FROM combos WHERE id = ?`, [id]);
   return rowToCombo(row);
 }
 
 export async function getComboByName(name) {
   const db = await getAdapter();
+  if (name === "MyDefaultProvider") syncDefaultProviderCombo(db);
   const row = db.get(`SELECT * FROM combos WHERE name = ?`, [name]);
   return rowToCombo(row);
 }

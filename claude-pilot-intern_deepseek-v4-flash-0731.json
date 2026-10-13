@@ -1,0 +1,11 @@
+{
+  "tool": "Claude Code 2.1.296",
+  "model": "intern/deepseek-v4-flash-0731",
+  "exitCode": 0,
+  "streamedEvents": 21,
+  "toolCallObserved": true,
+  "structuredFinalPassed": true,
+  "errors": [],
+  "stderrSummary": "[claude-code:unrecognized_model] {\"model\":\"intern/deepseek-v4-flash-0731\",\"query_source\":\"sdk\"}\n",
+  "at": "2026-10-12T22:41:26.253Z"
+}

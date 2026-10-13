@@ -7,6 +7,9 @@ import { BRAND } from "open-sse/config/brand.js";
 import { getProviderConnections } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { FILTERS } from "../../providers/suggested-models/filters.js";
+import { registryModelsForCatalog, registryModelsFetcher, normalizeOpenAIModels } from "@/shared/utils/catalogModels";
+import { createHash } from "node:crypto";
+import { rememberDefaultComboCatalog } from "@/lib/db/repos/defaultProviderCombo";
 
 export const dynamic = "force-dynamic";
 
@@ -34,21 +37,23 @@ function modelKind(model) {
 }
 
 // Live lists come only from registry-declared fetcher URLs, never from request input.
-async function fetchLiveModels(entry) {
-  const fetcher = entry.modelsFetcher;
-  const filter = fetcher?.url && FILTERS[fetcher.type];
+async function fetchLiveModels(entry, connections) {
+  const fetcher = registryModelsFetcher(entry);
+  const filter = fetcher?.url && (FILTERS[fetcher.type] || (fetcher.type === "openai" ? normalizeOpenAIModels : null));
   if (!filter) return [];
-  const cached = liveCache.get(entry.id);
+  const apiKey = fetcher.type === "openai" ? connections.find(c => c.provider === entry.id && c.isActive !== false && c.apiKey)?.apiKey : null;
+  const cacheKey = `${entry.id}:${apiKey ? createHash("sha256").update(apiKey).digest("hex") : "public"}`;
+  const cached = liveCache.get(cacheKey);
   if (cached && Date.now() - cached.at < LIVE_TTL_MS) return cached.models;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LIVE_TIMEOUT_MS);
   try {
-    const res = await fetch(fetcher.url, { signal: controller.signal, cache: "no-store" });
+    const res = await fetch(fetcher.url, { signal: controller.signal, cache: "no-store", headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {} });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const raw = json?.data ?? json?.models ?? json;
     const models = filter(Array.isArray(raw) ? raw : []);
-    liveCache.set(entry.id, { at: Date.now(), models });
+    liveCache.set(cacheKey, { at: Date.now(), models });
     return models;
   } catch {
     return cached?.models || [];
@@ -105,7 +110,7 @@ export async function GET() {
     const models = [];
     const seen = new Set();
 
-    const liveLists = await Promise.all(entries.map((entry) => fetchLiveModels(entry)));
+    const liveLists = await Promise.all(entries.map((entry) => fetchLiveModels(entry, connections)));
 
     entries.forEach((entry, index) => {
       const alias = entry.alias || entry.id;
@@ -136,7 +141,7 @@ export async function GET() {
         });
       };
 
-      for (const model of PROVIDER_MODELS[alias] || []) add(model, modelKind(model), "registry");
+      for (const model of registryModelsForCatalog(entry, PROVIDER_MODELS[alias] || [], liveLists[index])) add(model, modelKind(model), "registry");
       for (const [configKey, kind] of Object.entries(MEDIA_CONFIG_KINDS)) {
         for (const model of entry[configKey]?.models || entry.media?.[configKey]?.models || []) add(model, kind, "registry");
       }
@@ -166,6 +171,7 @@ export async function GET() {
       });
     }
 
+    await rememberDefaultComboCatalog(models);
     return NextResponse.json({
       brand: { name: BRAND.name, modelPrefix: BRAND.modelPrefix },
       providers,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCombos, createCombo, getComboByName } from "@/lib/localDb";
+import { getHealthyComboModels } from "@/shared/services/comboHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,11 @@ const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
 export async function GET() {
   try {
     const combos = await getCombos();
+    const managed = combos.find(c => c.name === "MyDefaultProvider");
+    if (managed) {
+      const health = await getHealthyComboModels(managed.models);
+      managed.health = { eligible: health.eligible.length, skipped: health.skipped.length, maxAttempts: 3, selectionTimeoutSeconds: 60 };
+    }
     return NextResponse.json({ combos });
   } catch (error) {
     console.log("Error fetching combos:", error);

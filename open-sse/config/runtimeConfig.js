@@ -59,6 +59,10 @@ export const STREAM_FIRST_CHUNK_TIMEOUT_MS = envMs("STREAM_FIRST_CHUNK_TIMEOUT_M
 
 // Fetch connect timeout: abort if upstream doesn't return response headers within this duration
 export const FETCH_CONNECT_TIMEOUT_MS = envMs("FETCH_CONNECT_TIMEOUT_MS", 60 * 1000);
+export const REFRESH_TIMEOUT_MS = envMs("REFRESH_TIMEOUT_MS", 20 * 1000);
+export const MAX_DECOMPRESSED_FRAME_BYTES = envMs("MAX_DECOMPRESSED_FRAME_BYTES", 16 * 1024 * 1024);
+export const MAX_ACCOUNT_ATTEMPTS = envMs("MAX_ACCOUNT_ATTEMPTS", 5);
+export const ACCOUNT_FALLBACK_DELAY_MS = envMs("ACCOUNT_FALLBACK_DELAY_MS", 150);
 
 // Gemini native TTS fetch timeout: abort if Google does not return response headers in time.
 export const GEMINI_NATIVE_TTS_FETCH_TIMEOUT_MS = envMs("GEMINI_NATIVE_TTS_FETCH_TIMEOUT_MS", 45 * 1000);

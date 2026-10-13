@@ -29,14 +29,6 @@ export function getPublicOrigin(request) {
     return trimTrailingSlashes(configuredBaseUrl);
   }
 
-  const forwardedProto = request?.headers?.get?.("x-forwarded-proto") || "";
-  const forwardedHost = request?.headers?.get?.("x-forwarded-host") || "";
-  const host = forwardedHost || request?.headers?.get?.("host") || "";
-  if (host) {
-    const protocol = (forwardedProto || new URL(request.url).protocol || "http:").replace(/:$/, "");
-    return `${protocol}://${host}`.replace(/\/+$/, "");
-  }
-
   return trimTrailingSlashes(new URL(request.url).origin);
 }
 

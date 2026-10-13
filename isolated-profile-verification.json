@@ -1,0 +1,22 @@
+{
+  "scope": "Packaged server with a fresh profile on the current Windows host; not a clean VM",
+  "checks": {
+    "freshProfileStartup": true,
+    "unauthenticatedManagementDenied": true,
+    "secretFreeExport": true,
+    "configurationRestore": true,
+    "restartPersistence": true,
+    "accounting": {
+      "concurrentRequests": 10,
+      "completed": 4,
+      "budgetRejections": 6,
+      "completedStreamingAndNonstreamUsageSettled": true,
+      "concurrentUsageCounted": true,
+      "unknownPricingBlockedBeforeUpstream": true,
+      "interruptedStreamReservationRetained": true,
+      "outputCapReachedUpstream": true
+    },
+    "softwareUpdateAndRollback": "Not tested: no independently packaged prior release / clean VM"
+  },
+  "at": "2026-10-12T23:00:39.729Z"
+}

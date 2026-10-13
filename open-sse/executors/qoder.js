@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { createHash } from "crypto";
 
 import { BaseExecutor } from "./base.js";
+import { readWithTimeout } from "../utils/readWithTimeout.js";
 import { PROVIDERS } from "../config/providers.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { SSE_DONE } from "../utils/sseConstants.js";
@@ -366,7 +367,7 @@ async function peekFirstQoderFrame(reader, decoder) {
   while (true) {
     let nl = consumed.indexOf("\n", offset);
     if (nl === -1 && !upstreamDone) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readWithTimeout(reader);
       upstreamDone = done;
       consumed += done ? decoder.decode() : decoder.decode(value, { stream: true });
       continue;

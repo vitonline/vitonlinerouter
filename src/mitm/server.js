@@ -14,7 +14,7 @@ const { getMitmAlias } = require("./dbReader");
 const { applyAntigravityIdeVersionOverride } = require("./antigravityIdeVersion");
 const LOCAL_PORT = 443;
 const IS_WIN = process.platform === "win32";
-const ENABLE_FILE_LOG = IS_DEV;
+const ENABLE_FILE_LOG = IS_DEV && process.env.ENABLE_MITM_REQUEST_LOGS === "true";
 
 // Clear stale dump files on every MITM start (prevents unbounded disk usage)
 clearDumpDir();
@@ -161,7 +161,7 @@ async function negotiateAlpn(host) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect({
       host: ip, port: 443, servername: host,
-      ALPNProtocols: ["h2", "http/1.1"], rejectUnauthorized: false,
+      ALPNProtocols: ["h2", "http/1.1"], rejectUnauthorized: true,
     }, () => {
       const proto = socket.alpnProtocol || "http/1.1";
       alpnCache.set(host, proto);
@@ -194,7 +194,7 @@ async function passthroughHttp2(req, res, bodyBuffer, headers, targetHost, onRes
     const client = http2.connect(`https://${targetHost}`, {
       createConnection: () => tls.connect({
         host: targetIP, port: 443, servername: targetHost,
-        ALPNProtocols: ["h2"], rejectUnauthorized: false,
+        ALPNProtocols: ["h2"], rejectUnauthorized: true,
       }),
     });
     client.once("error", (e) => {
@@ -256,7 +256,7 @@ async function passthroughHttps(req, res, bodyBuffer, headers, targetHost, onRes
     method: req.method,
     headers,
     servername: targetHost,
-    rejectUnauthorized: false
+    rejectUnauthorized: true
   }, (forwardRes) => {
     res.writeHead(forwardRes.statusCode, forwardRes.headers);
     if (dumper) dumper.writeHeader(forwardRes.statusCode, forwardRes.headers);

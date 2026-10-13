@@ -6,6 +6,13 @@ import { resolveOllamaLocalHost, resolveXiaomiTokenplanBaseUrl, PROVIDERS } from
 import { openaiToCommandCodeRequest } from "open-sse/translator/request/openai-to-commandcode.js";
 import { resolveQoderCredentials, resolveQoderModels } from "open-sse/services/qoderModels.js";
 import { normalizeProviderId } from "@/lib/providerNormalization";
+import { assertProviderEndpoint } from "@/shared/utils/providerEndpointGuard.js";
+
+const fetch = (url, options = {}) => globalThis.fetch(url, {
+  signal: AbortSignal.timeout(10_000),
+  ...options,
+  redirect: "error",
+});
 
 // Probe a webSearch/webFetch provider using its searchConfig/fetchConfig.
 // Returns true if API key is accepted (status !== 401 && !== 403).
@@ -39,7 +46,7 @@ async function probeWebProvider(provider, apiKey) {
   }
 
   const res = await fetch(url, { method: cfg.method, headers, body, signal: AbortSignal.timeout(8000) });
-  return res.status !== 401 && res.status !== 403;
+  return res.ok;
 }
 
 // Probe a media provider (tts/embedding/stt/image/video) using *Config.
@@ -78,7 +85,7 @@ async function probeMediaProvider(provider, apiKey) {
     body: method === "GET" ? undefined : JSON.stringify({ input: "ping", text: "ping", prompt: "ping", model: getDefaultModel(provider) || "test" }),
     signal: AbortSignal.timeout(8000),
   });
-  return res.status !== 401 && res.status !== 403;
+  return res.ok;
 }
 
 // POST /api/providers/validate - Validate API key with provider
@@ -138,7 +145,7 @@ export async function POST(request) {
           body: JSON.stringify({ model: "test", input: "ping" }),
         });
         // 401/403 = bad key; anything else (including 400 "model not found") means key works
-        isValid = embedRes.status !== 401 && embedRes.status !== 403;
+        isValid = embedRes.ok;
         return NextResponse.json({
           valid: isValid,
           error: isValid ? null : "Invalid API key",
@@ -175,7 +182,7 @@ export async function POST(request) {
         });
 
         // 400/529 still confirms key accepted; only 401/403 = bad key
-        isValid = res.status !== 401 && res.status !== 403;
+        isValid = res.ok;
         return NextResponse.json({
           valid: isValid,
           error: isValid ? null : "Invalid API key",
@@ -198,16 +205,39 @@ export async function POST(request) {
             max_tokens: 1,
           }),
         });
-        isValid = cfRes.status !== 401 && cfRes.status !== 403 && cfRes.status !== 404;
+        isValid = cfRes.ok;
         return NextResponse.json({
           valid: isValid,
           error: isValid ? null : "Invalid API token or Account ID",
         });
       }
 
+      if (provider === "xkiro" || provider === "xk") {
+        // xkiro's /v1/models is public (HTTP 200 with no key at all), so it
+        // cannot distinguish a bad key from a good one. Probe chat instead:
+        // a bad key is rejected with 401, everything else means the key works
+        // (429/402 still indicate accepted credentials, e.g. quota exhausted).
+        const chatRes = await fetch("https://api.xkiro.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: getDefaultModel("xkiro"),
+            messages: [{ role: "user", content: "test" }],
+            max_tokens: 1,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        isValid = chatRes.ok;
+        return NextResponse.json({
+          valid: isValid,
+          error: isValid ? null : "Invalid API key",
+        });
+      }
+
       if (provider === "azure") {
         const { providerSpecificData } = body;
         const endpoint = (providerSpecificData?.azureEndpoint || "").replace(/\/$/, "");
+        await assertProviderEndpoint(endpoint);
         const deployment = providerSpecificData?.deployment || "gpt-4";
         const apiVersion = providerSpecificData?.apiVersion || "2024-10-01-preview";
         const organization = providerSpecificData?.organization;
@@ -227,7 +257,7 @@ export async function POST(request) {
             max_tokens: 1,
           }),
         });
-        isValid = azureRes.status !== 401 && azureRes.status !== 403;
+        isValid = azureRes.ok;
         return NextResponse.json({
           valid: isValid,
           error: isValid ? null : "Invalid API key or Azure configuration",
@@ -281,7 +311,7 @@ export async function POST(request) {
               messages: [{ role: "user", content: "test" }],
             }),
           });
-          isValid = anthropicRes.status !== 401;
+          isValid = anthropicRes.ok;
           break;
 
         case "gemini":
@@ -316,7 +346,7 @@ export async function POST(request) {
               headers: { "Authorization": `Bearer ${apiKey}`, "content-type": "application/json" },
               body: JSON.stringify({ model: testModel, max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
             });
-            isValid = res.status !== 401 && res.status !== 403;
+            isValid = res.ok;
           } else {
             const testModel = getDefaultModel(provider) || "claude-sonnet-4-20250514";
             const res = await fetch(cfg.baseUrl, {
@@ -330,7 +360,7 @@ export async function POST(request) {
               body: JSON.stringify({ model: testModel, max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
             });
             // 400 = model resolution error but auth passed (e.g. agentrouter "no available channel")
-            isValid = res.status !== 401 && res.status !== 403;
+            isValid = res.ok;
           }
           break;
         }
@@ -348,11 +378,12 @@ export async function POST(request) {
               messages: [{ role: "user", content: "test" }],
             }),
           });
-          isValid = res.status !== 401 && res.status !== 403;
+          isValid = res.ok;
           break;
         }
 
         case "deepseek":
+        case "intern":
         case "groq":
         case "xai":
         case "mistral":
@@ -381,14 +412,15 @@ export async function POST(request) {
             "xiaomi-tokenplan": `${resolveXiaomiTokenplanBaseUrl({ providerSpecificData })}/models`,
           };
           const headers = {};
+          if (provider === "ollama-local") await assertProviderEndpoint(endpoints[provider], { local: true });
           if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
           const res = await fetch(endpoints[provider], { headers, signal: AbortSignal.timeout(8000) });
           // xai returns 400 for bad key, 403 for valid-but-no-credit. Other providers use 401.
           if (provider === "xai") {
-            isValid = res.status === 200 || res.status === 403;
+            isValid = res.ok;
           } else if (provider === "xiaomi-tokenplan") {
             // /models returns 403 for valid keys lacking list permission; only 401 means invalid
-            isValid = res.status !== 401;
+            isValid = res.ok;
           } else {
             isValid = res.ok;
           }
@@ -406,7 +438,7 @@ export async function POST(request) {
               stream: false,
             }),
           });
-          isValid = res.status !== 401 && res.status !== 403;
+          isValid = res.ok;
           break;
         }
 
@@ -428,7 +460,7 @@ export async function POST(request) {
             },
             body: JSON.stringify(payload),
           });
-          isValid = res.status !== 401 && res.status !== 403;
+          isValid = res.ok;
           break;
         }
 
@@ -454,7 +486,7 @@ export async function POST(request) {
             }),
           });
           // Returns 401 for invalid key, 200 for valid, 400 for malformed
-          isValid = res.status === 200 || res.status === 400;
+          isValid = res.ok;
           break;
         }
 
@@ -471,7 +503,7 @@ export async function POST(request) {
               `https://aiplatform.googleapis.com/v1/publishers/google/models/__probe__:generateContent?key=${apiKey}`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
             );
-            isValid = probeRes.status !== 401 && probeRes.status !== 403;
+            isValid = probeRes.ok;
           }
           break;
         }
@@ -485,7 +517,7 @@ export async function POST(request) {
               `https://aiplatform.googleapis.com/v1/publishers/google/models/__probe__:generateContent?key=${apiKey}`,
               { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
             );
-            isValid = probeRes.status !== 401 && probeRes.status !== 403;
+            isValid = probeRes.ok;
           }
           break;
         }
@@ -631,7 +663,7 @@ export async function POST(request) {
             body: JSON.stringify({ model: defaultModel, messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
             signal: AbortSignal.timeout(10000),
           });
-          isValid = chatRes.status !== 401 && chatRes.status !== 403;
+          isValid = chatRes.ok;
           break;
         }
       }
@@ -642,7 +674,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       valid: isValid,
-      error: isValid ? null : (error || "Invalid API key"),
+      error: isValid ? null : (error || "Provider probe failed; check credentials, endpoint, model and plan access"),
     });
   } catch (error) {
     console.log("Error validating API key:", error);

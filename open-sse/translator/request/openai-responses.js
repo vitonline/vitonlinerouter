@@ -13,6 +13,7 @@ import {
   coerceResponsesOutput,
 } from "../formats/responsesApi.js";
 import { ROLE, OPENAI_BLOCK, RESPONSES_ITEM } from "../schema/index.js";
+import { flattenResponsesTools, namespacedToolName } from "../../shared/responsesToolNamespaces.js";
 
 const MAX_TOOL_NAME_LEN = 128;
 
@@ -113,7 +114,8 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
       }
       // Skip items with empty/missing name — Codex/OpenAI reject nameless tool calls (#444)
       if (!item.name || typeof item.name !== "string" || item.name.trim() === "") continue;
-      if (itemType === RESPONSES_ITEM.CUSTOM_TOOL_CALL) customToolNames.add(item.name);
+      const callName = namespacedToolName(item.namespace, item.name);
+      if (itemType === RESPONSES_ITEM.CUSTOM_TOOL_CALL) customToolNames.add(callName);
       const toolInput = itemType === RESPONSES_ITEM.CUSTOM_TOOL_CALL
         ? { input: typeof item.input === "string" ? item.input : JSON.stringify(item.input ?? "") }
         : item.arguments;
@@ -121,7 +123,7 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
         id: item.call_id,
         type: OPENAI_BLOCK.FUNCTION,
         function: {
-          name: item.name,
+          name: callName,
           arguments: typeof toolInput === "string" ? toolInput : JSON.stringify(toolInput ?? {})
         }
       });
@@ -183,7 +185,7 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
     ...additionalTools,
   ];
   if (responseTools.length > 0) {
-    result.tools = responseTools
+    result.tools = flattenResponsesTools(responseTools).tools
       .map(tool => {
         // Already in Chat Completions format: { type: "function", function: { name, ... } }
         if (tool.function) return tool;
@@ -230,6 +232,11 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
       .filter(Boolean);
   }
   if (customToolNames.size > 0) result._customToolNames = [...customToolNames];
+  const format = body.text?.format;
+  if (format?.type === "json_schema") {
+    result.response_format = { type: "json_schema", json_schema: { name: format.name, schema: format.schema, strict: format.strict } };
+  } else if (format?.type === "json_object") result.response_format = { type: "json_object" };
+  delete result.text;
 
   // Cleanup Responses API specific fields
   // Map Responses-only max_output_tokens to Chat max_tokens (avoid leaking unknown field upstream)

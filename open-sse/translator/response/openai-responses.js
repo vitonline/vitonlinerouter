@@ -149,7 +149,7 @@ export function openaiToOpenAIResponsesResponse(chunk, state) {
   if (choice.finish_reason) {
     for (const i in state.msgItemAdded) closeMessage(state, emit, i);
     closeReasoning(state, emit);
-    for (const i in state.funcCallIds) closeToolCall(state, emit, i);
+    for (const i of new Set([...Object.keys(state.funcCallIds), ...Object.keys(state.funcNames)])) closeToolCall(state, emit, i);
     // Upstreams report usage either on the finish chunk itself or on a trailing chunk
     // whose `choices` array is empty (OpenAI does the latter). Emitting
     // response.completed here would freeze the payload before that trailing chunk is
@@ -335,7 +335,7 @@ function emitToolCall(state, emit, tc) {
   const funcName = tc.function?.name;
 
   if (funcName) state.funcNames[tcIdx] = funcName;
-  if (newCallId) state.funcCallIds[tcIdx] = newCallId;
+  if (newCallId && !state.funcItemAdded[tcIdx]) state.funcCallIds[tcIdx] = newCallId;
 
   // Some compatible providers split the call id and function name across
   // chunks. Wait for both before deciding whether this is a custom tool;
@@ -353,9 +353,17 @@ function emitToolCall(state, emit, tc) {
         type: custom ? RESPONSES_ITEM.CUSTOM_TOOL_CALL : RESPONSES_ITEM.FUNCTION_CALL,
         ...(custom ? { input: "" } : { arguments: "" }),
         call_id: callId,
-        name: state.funcNames[tcIdx] || ""
+        ...(state.namespaceTools?.[state.funcNames[tcIdx]] || { name: state.funcNames[tcIdx] || "" })
       }
     });
+    if (!custom && state.funcArgsBuf[tcIdx]) {
+      emit("response.function_call_arguments.delta", {
+        type: "response.function_call_arguments.delta",
+        item_id: `fc_${callId}`,
+        output_index: tcIdx,
+        delta: state.funcArgsBuf[tcIdx]
+      });
+    }
   }
 
   if (!state.funcArgsBuf[tcIdx]) state.funcArgsBuf[tcIdx] = "";
@@ -378,6 +386,10 @@ function emitToolCall(state, emit, tc) {
 }
 
 function closeToolCall(state, emit, idx) {
+  if (!state.funcItemAdded[idx] && state.funcNames[idx]) {
+    state.funcCallIds[idx] ||= fallbackToolCallId(Number(idx));
+    emitToolCall(state, emit, { index: Number(idx), function: { name: state.funcNames[idx] } });
+  }
   const callId = state.funcCallIds[idx];
   if (callId && !state.funcItemDone[idx]) {
     const args = state.funcArgsBuf[idx] || "{}";
@@ -411,7 +423,7 @@ function closeToolCall(state, emit, idx) {
       type: custom ? RESPONSES_ITEM.CUSTOM_TOOL_CALL : RESPONSES_ITEM.FUNCTION_CALL,
       ...(custom ? { input: extractCustomToolInput(args) } : { arguments: args }),
       call_id: callId,
-      name: state.funcNames[idx] || ""
+      ...(state.namespaceTools?.[state.funcNames[idx]] || { name: state.funcNames[idx] || "" })
     };
 
     emit("response.output_item.done", {
@@ -482,7 +494,7 @@ function flushEvents(state) {
 
   for (const i in state.msgItemAdded) closeMessage(state, emit, i);
   closeReasoning(state, emit);
-  for (const i in state.funcCallIds) closeToolCall(state, emit, i);
+  for (const i of new Set([...Object.keys(state.funcCallIds), ...Object.keys(state.funcNames)])) closeToolCall(state, emit, i);
   sendCompleted(state, emit);
   
   return events;

@@ -1,0 +1,230 @@
+{
+  "testedAt": "2026-10-12T07:57:31.638Z",
+  "scope": "One representative chat model per active configured provider; free alternatives on failure",
+  "results": [
+    {
+      "provider": "edge-tts",
+      "tests": [
+        {
+          "model": "edge-tts/en-US-AriaNeural",
+          "kind": "tts",
+          "ok": false,
+          "reason": "Model unsupported or unavailable",
+          "error": "HTTP 404: No active credentials for provider: edge-tts",
+          "status": 404,
+          "latencyMs": 15,
+          "testedAt": "2026-10-12T07:57:31.699Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "experientiallabs",
+      "tests": [
+        {
+          "model": "experientiallabs/gpt-6-luna",
+          "kind": "llm",
+          "ok": false,
+          "reason": "Credits or plan restrictions",
+          "error": "HTTP 503: [experientiallabs/gpt-6-luna] [429]: {\"error\":{\"message\":\"insufficient_credits: Your organization has no available platform credits (available after reservations: -27.53 credits). Pending holds are not settled spend. Review your balance and holds or add credits at https://platform.experientiallabs.ai/credits. Top-ups start at $5. Requests using your own provider keys (BYOK) are unaffected.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"insufficient_quota\"}} (reset after 2s)",
+          "status": 503,
+          "latencyMs": 1201,
+          "testedAt": "2026-10-12T07:57:32.963Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "google-tts",
+      "tests": [
+        {
+          "model": "google-tts/af",
+          "kind": "tts",
+          "ok": false,
+          "reason": "Model unsupported or unavailable",
+          "error": "HTTP 404: No active credentials for provider: google-tts",
+          "status": 404,
+          "latencyMs": 19,
+          "testedAt": "2026-10-12T07:57:33.018Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "nanobanana",
+      "tests": [
+        {
+          "model": "nanobanana/nanobanana-flash",
+          "kind": "image",
+          "ok": false,
+          "reason": "Request timed out",
+          "error": "The operation was aborted due to timeout",
+          "status": null,
+          "latencyMs": null,
+          "testedAt": "2026-10-12T07:57:48.058Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "opencode",
+      "tests": [
+        {
+          "model": "opencode/muse-spark-1.2-contributor-free",
+          "kind": "llm",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 8496,
+          "testedAt": "2026-10-12T07:57:56.592Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "openrouter",
+      "tests": [
+        {
+          "model": "openrouter/openrouter/free",
+          "kind": "llm",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 3223,
+          "testedAt": "2026-10-12T07:57:59.854Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "byteplus",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "fal-ai",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "groq",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "huggingface",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "kiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "local-device",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "nvidia",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "ollama",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "vertex",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "api-airforce",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bazaarlink",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "kilo-gateway",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "poolside",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "tokenrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "selfhosted-stt",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-tts",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-embedding",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "tokenharbor",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "dahl",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "atria",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bai",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "xkiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apinex",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apmix",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "modelrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "zenmux",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "excelnt",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "unorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "teamorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "qwencloud",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "lebang",
+      "skipped": "All saved connections disabled"
+    }
+  ]
+}

@@ -13,11 +13,11 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Provider node not found" }, { status: 404 });
     }
 
-    if (!name?.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (!prefix?.trim()) {
+    if (typeof prefix !== "string" || !prefix.trim()) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
     }
 
@@ -26,7 +26,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Invalid OpenAI compatible API type" }, { status: 400 });
     }
 
-    if (!baseUrl?.trim()) {
+    if (typeof baseUrl !== "string" || !baseUrl.trim()) {
       return NextResponse.json({ error: "Base URL is required" }, { status: 400 });
     }
 
@@ -65,9 +65,9 @@ export async function PUT(request, { params }) {
       updateProviderConnection(connection.id, {
         providerSpecificData: {
           ...(connection.providerSpecificData || {}),
-          prefix: prefix.trim(),
+          prefix: updated.prefix,
           apiType: node.type === "openai-compatible" ? apiType : undefined,
-          baseUrl: sanitizedBaseUrl,
+          baseUrl: updated.baseUrl,
           nodeName: updated.name,
         }
       })
@@ -75,6 +75,7 @@ export async function PUT(request, { params }) {
 
     return NextResponse.json({ node: updated });
   } catch (error) {
+    if (error.status === 400 || error.status === 409) return NextResponse.json({ error: error.message }, { status: error.status });
     console.log("Error updating provider node:", error);
     return NextResponse.json({ error: "Failed to update provider node" }, { status: 500 });
   }

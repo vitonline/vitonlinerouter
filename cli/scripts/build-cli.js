@@ -222,6 +222,7 @@ function buildCliPackage() {
   const customServerSrc = path.join(appDir, "custom-server.js");
   if (fs.existsSync(customServerSrc)) {
     fs.copyFileSync(customServerSrc, path.join(cliAppDir, "custom-server.js"));
+    fs.copyFileSync(path.join(appDir, "shutdown.cjs"), path.join(cliAppDir, "shutdown.cjs"));
     // Raw (unbundled) modules such as the updater resolve ../../../brand.json from here.
     fs.copyFileSync(path.join(appDir, "brand.json"), path.join(cliAppDir, "brand.json"));
     console.log("✅ Copied custom-server.js + brand.json\n");

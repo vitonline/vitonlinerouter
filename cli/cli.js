@@ -110,7 +110,6 @@ function getLanIp() {
 function getDisplayHost() {
   return host === DEFAULT_HOST ? "localhost" : host;
 }
-const MAX_PORT_ATTEMPTS = 10;
 // Identifiers for killAllAppProcesses - only kill flagshiprouter specifically
 const PROCESS_IDENTIFIERS = [
   BRAND.slug  // Only package name - avoid killing other apps
@@ -544,7 +543,19 @@ if (!fs.existsSync(serverPath)) {
 const updatePromise = checkForUpdate();
 killAllAppProcesses(port)
   .then(() => killProcessOnPort(port))
-  .then(() => startServer(updatePromise));
+  .then(async () => {
+    // Never spawn/restart repeatedly into a port still owned by another process.
+    const probe = net.createServer();
+    await new Promise((resolve, reject) => {
+      probe.once("error", reject);
+      probe.listen(port, host, () => probe.close(resolve));
+    });
+    startServer(updatePromise);
+  })
+  .catch((error) => {
+    console.error(`Cannot start ${BRAND.name} on port ${port}: ${error.message}`);
+    process.exit(1);
+  });
 
 // Show interface selection menu
 async function showInterfaceMenu(latestVersion) {
@@ -666,6 +677,9 @@ function startServer(updatePromise) {
   process.on("uncaughtException", (err) => {
     if (isShuttingDown) return;
     console.error("Error:", err.message);
+    isShuttingDown = true;
+    cleanup();
+    process.exit(1);
   });
 
   // Handle all exit scenarios
@@ -843,18 +857,9 @@ function startServer(updatePromise) {
     if (aliveMs >= RESTART_RESET_MS) restartCount = 0;
 
     if (restartCount >= MAX_RESTARTS) {
-      console.error(`\n⚠️  Server crashed ${MAX_RESTARTS} times. Disabling MIT and restarting...`);
-      try {
-        const dbPath = path.join(os.homedir(), process.platform === "win32" ? path.join("AppData", "Roaming", BRAND.slug, "db.json") : path.join(`.${BRAND.slug}`, "db.json"));
-        if (fs.existsSync(dbPath)) {
-          const db = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
-          if (db.settings) db.settings.mitmEnabled = false;
-          fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-        }
-      } catch { /* best effort */ }
-      restartCount = 0;
-      server = spawnServer();
-      attachServerEvents();
+      console.error(`Server failed ${MAX_RESTARTS} restart attempts. Stopping; inspect the crash log and configuration.`);
+      cleanup();
+      process.exit(1);
       return;
     }
 

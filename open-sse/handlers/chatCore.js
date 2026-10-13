@@ -5,6 +5,7 @@ import { FORMATS } from "../translator/formats.js";
 import { normalizeClaudePassthrough, anchorClaudeCache } from "../translator/formats/claude.js";
 import { createStreamController } from "../utils/streamHandler.js";
 import { refreshWithRetry } from "../services/tokenRefresh.js";
+import { withCredentialRefreshLock } from "../services/oauthCredentialManager.js";
 import { createRequestLogger } from "../utils/requestLogger.js";
 import { getModelTargetFormat, getModelSupportedFormats, getModelStrip, getModelUpstreamId, getModelType, PROVIDER_ID_TO_ALIAS } from "../config/providerModels.js";
 import { PROVIDERS } from "../config/providers.js";
@@ -60,7 +61,7 @@ export function stripContinuityFields(body) {
   return body;
 }
 
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, headroomTimeoutMs, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, headroomTimeoutMs, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, signal }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
   // Stable per-session color so all lines of one CLI conversation share a tag
@@ -177,7 +178,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     }
     // Convert remote image URLs to base64 for targets that can't fetch URLs.
     try {
-      const n = await prefetchRemoteImages(body, sourceFormat, targetFormat, { signal: undefined });
+      const n = await prefetchRemoteImages(body, sourceFormat, targetFormat, { signal });
       if (n > 0) log?.debug?.("MODALITY", `prefetched ${n} remote image(s) for ${targetFormat}`);
     } catch (e) { log?.warn?.("MODALITY", `image prefetch failed: ${e.message}`); }
   }
@@ -379,7 +380,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       credentials,
       providerSessionId: sessionSeed,
       clientTool,
-      signal: streamController.signal,
+      signal: signal ? AbortSignal.any([signal, streamController.signal]) : streamController.signal,
       log,
       proxyOptions,
     });
@@ -425,14 +426,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       // providers (xAI/grok-cli) issue a new RT on every refresh; without this,
       // refreshWithRetry's 2nd/3rd attempt reuses the already-consumed RT →
       // invalid_grant → auth_failed retryable=false.
-      const newCredentials = await refreshWithRetry(async () => {
-        const result = await executor.refreshCredentials(credentials, log);
+      const newCredentials = await withCredentialRefreshLock(provider, credentials, () => refreshWithRetry(async () => {
+        const result = await executor.refreshCredentials(credentials, log, proxyOptions);
         if (result?.refreshToken && result.refreshToken !== credentials.refreshToken) {
           if (result.accessToken) credentials.accessToken = result.accessToken;
           credentials.refreshToken = result.refreshToken;
         }
         return result;
-      }, 3, log);
+      }, 3, log));
       if (newCredentials?.accessToken || newCredentials?.copilotToken) {
         if (log?.line) log.line(reqTag, "🔑", `TOKEN REFRESHED · ${provider}/${model}`);
         Object.assign(credentials, newCredentials);
@@ -447,16 +448,25 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
             credentials,
             providerSessionId: sessionSeed,
             clientTool,
-            signal: streamController.signal,
+            signal: signal ? AbortSignal.any([signal, streamController.signal]) : streamController.signal,
             log,
             proxyOptions,
           });
           if (retryResult.response.ok) {
+            await providerResponse.body?.cancel().catch(() => {});
             providerResponse = retryResult.response;
             providerUrl = retryResult.url;
             providerResponseFormat = retryResult.responseFormat || targetFormat;
+          } else {
+            await providerResponse.body?.cancel().catch(() => {});
+            providerResponse = retryResult.response;
+            providerUrl = retryResult.url;
           }
-        } catch { log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`); }
+        } catch {
+          await providerResponse.body?.cancel().catch(() => {});
+          providerResponse = new Response(JSON.stringify({ error: { message: "Upstream retry after token refresh failed" } }), { status: HTTP_STATUS.BAD_GATEWAY });
+          log?.warn?.("TOKEN", `${provider.toUpperCase()} | retry after refresh failed`);
+        }
       } else {
         log?.warn?.("TOKEN", `${provider.toUpperCase()} | refresh failed`);
       }

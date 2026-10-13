@@ -12,7 +12,12 @@ const log = (msg) => console.log(`[${time()}] [MITM] ${msg}`);
 const err = (msg) => console.error(`[${time()}] ❌ [MITM] ${msg}`);
 
 const DUMP_DIR = path.join(DATA_DIR, "logs", "mitm");
-if (!fs.existsSync(DUMP_DIR)) fs.mkdirSync(DUMP_DIR, { recursive: true });
+if (!fs.existsSync(DUMP_DIR)) fs.mkdirSync(DUMP_DIR, { recursive: true, mode: 0o700 });
+if (process.platform !== "win32") fs.chmodSync(DUMP_DIR, 0o700);
+
+const cleanHeaders = headers => Object.fromEntries(Object.entries(headers || {}).map(([name, value]) => [name,
+  /authorization|cookie|api.?key|token|secret/i.test(name) ? "[REDACTED]" : value,
+]));
 
 // Clear all files inside DUMP_DIR (called on MITM server start to avoid unbounded growth)
 function clearDumpDir() {
@@ -40,9 +45,9 @@ function decodeBody(buf, encoding) {
   if (!buf || buf.length === 0) return buf;
   try {
     const enc = (encoding || "").toLowerCase();
-    if (enc.includes("gzip")) return zlib.gunzipSync(buf);
-    if (enc.includes("br")) return zlib.brotliDecompressSync(buf);
-    if (enc.includes("deflate")) return zlib.inflateSync(buf);
+    if (enc.includes("gzip")) return zlib.gunzipSync(buf, { maxOutputLength: 16 * 1024 * 1024 });
+    if (enc.includes("br")) return zlib.brotliDecompressSync(buf, { maxOutputLength: 16 * 1024 * 1024 });
+    if (enc.includes("deflate")) return zlib.inflateSync(buf, { maxOutputLength: 16 * 1024 * 1024 });
   } catch { /* return raw on failure */ }
   return buf;
 }
@@ -60,9 +65,9 @@ function dumpRequest(req, bodyBuffer, tag = "raw") {
       method: req.method,
       url: req.url,
       host: req.headers.host,
-      headers: req.headers,
+      headers: cleanHeaders(req.headers),
       body: parsed ?? bodyBuffer.toString("utf8")
-    }, null, 2));
+    }, null, 2), { mode: 0o600 });
     return file;
   } catch { return null; }
 }
@@ -95,8 +100,9 @@ function createResponseDumper(req, tag = "raw") {
         const cleanHeaders = { ...headers };
         delete cleanHeaders["content-encoding"];
         delete cleanHeaders["Content-Encoding"];
-        const out = `STATUS: ${status}\nHEADERS: ${JSON.stringify(cleanHeaders, null, 2)}\n---BODY---\n${text}`;
-        fs.writeFileSync(file, out);
+        const safeHeaders = Object.fromEntries(Object.entries(cleanHeaders).map(([name, value]) => [name, /authorization|cookie|api.?key|token|secret/i.test(name) ? "[REDACTED]" : value]));
+        const out = `STATUS: ${status}\nHEADERS: ${JSON.stringify(safeHeaders, null, 2)}\n---BODY---\n${text}`;
+        fs.writeFileSync(file, out, { mode: 0o600 });
       } catch { /* ignore */ }
     },
     file

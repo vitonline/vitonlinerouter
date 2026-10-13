@@ -138,7 +138,12 @@ async function selectMenu(title, items, defaultIndex = 0, subtitle = "", headerC
       if (key.name === "down") return move(1);
       if (key.name === "return") { cleanup(); resolve(selectedIndex); return; }
       if (key.name === "escape") { cleanup(); resolve(-1); return; }
-      if (key.ctrl && key.name === "c") { cleanup(); process.exit(0); }
+      if (key.ctrl && key.name === "c") {
+        cleanup();
+        if (process.stdin.isTTY) process.stdin.setRawMode(false);
+        if (process.listenerCount("SIGINT")) process.emit("SIGINT");
+        else process.exit(0);
+      }
     };
 
     process.stdin.on("keypress", onKeypress);

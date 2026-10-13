@@ -63,7 +63,7 @@ export async function POST(request) {
   } catch (error) {
     recordFail(ip);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message || "saml_acs_failed")}`, origin)
+      new URL("/login?error=saml_acs_failed", origin)
     );
   }
 }

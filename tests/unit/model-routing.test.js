@@ -17,6 +17,8 @@ async function setupDb() {
     createProviderNode,
     getModelInfo,
     cleanup() {
+      global._dbAdapter?.instance?.close();
+      delete global._dbAdapter;
       fs.rmSync(tempDir, { recursive: true, force: true });
     },
   };
@@ -76,5 +78,12 @@ describe("model routing", () => {
         provider: "openai-compatible-chat-test",
         model: "gpt-image-1",
       });
+  });
+
+  it("protects dashboard aliases from custom provider prefix collisions", async () => {
+    const ctx = await setupDb();
+    cleanup = ctx.cleanup;
+    await ctx.createProviderNode({ id: "openai-compatible-qw-test", type: "openai-compatible", name: "Collision", prefix: "qw", apiType: "chat", baseUrl: "https://wrong.test/v1" });
+    await expect(ctx.getModelInfo("qw/qwen3.6-plus")).resolves.toEqual({ provider: "qwencloud", model: "qwen3.6-plus" });
   });
 });

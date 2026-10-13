@@ -161,6 +161,7 @@ function isBlockedHost(host) {
 // resolution — see assertPublicUrlResolved for that). Caller should map to 400.
 export function assertPublicUrl(rawUrl) {
   const parsed = new URL(rawUrl);
+  if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error("Blocked URL: invalid protocol or credentials");
   const host = normalizeHost(parsed.hostname);
   if (isBlockedHost(host)) throw new Error("Blocked URL: internal host");
 }
@@ -170,6 +171,7 @@ export function assertPublicUrl(rawUrl) {
 // services like nip.io/sslip.io, or an attacker-controlled domain with an A record
 // pointed at 127.0.0.1) is rejected too, not just IPs typed directly into the URL.
 export async function assertPublicUrlResolved(rawUrl) {
+  assertPublicUrl(rawUrl);
   const parsed = new URL(rawUrl);
   const host = normalizeHost(parsed.hostname);
   if (isBlockedHost(host)) throw new Error("Blocked URL: internal host");
@@ -207,9 +209,20 @@ export async function fetchPublic(url, init = {}, { maxRedirects = 5 } = {}) {
     const isRedirect = res.status >= 300 && res.status < 400;
     const location = isRedirect ? res.headers.get("location") : null;
     if (!location) return res;
-    if (hop >= maxRedirects) throw new Error("Blocked URL: too many redirects");
+    if (hop >= maxRedirects) {
+      await res.body?.cancel();
+      throw new Error("Blocked URL: too many redirects");
+    }
     const nextUrl = new URL(location, currentUrl).toString();
-    await assertPublicUrlResolved(nextUrl);
+    try { await assertPublicUrlResolved(nextUrl); } finally { await res.body?.cancel(); }
+    if (new URL(nextUrl).origin !== new URL(currentUrl).origin) {
+      const headers = new Headers(init.headers);
+      for (const name of ["authorization", "cookie", "x-api-key", "api-key"]) headers.delete(name);
+      init = { ...init, headers };
+    }
+    if (res.status === 303 || ([301, 302].includes(res.status) && init.method === "POST")) {
+      init = { ...init, method: "GET", body: undefined };
+    }
     currentUrl = nextUrl;
   }
 }

@@ -1,0 +1,7 @@
+{
+  "name": "MyDefaultProvider",
+  "strategy": "round-robin",
+  "autoIncludeModels": true,
+  "models": 625,
+  "checkedAt": "2026-10-12T15:18:23.029Z"
+}

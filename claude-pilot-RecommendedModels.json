@@ -1,0 +1,11 @@
+{
+  "tool": "Claude Code 2.1.296",
+  "model": "RecommendedModels",
+  "exitCode": 0,
+  "streamedEvents": 21,
+  "toolCallObserved": true,
+  "structuredFinalPassed": true,
+  "errors": [],
+  "stderrSummary": "[claude-code:unrecognized_model] {\"model\":\"RecommendedModels\",\"query_source\":\"sdk\"}\n",
+  "at": "2026-10-12T23:01:22.773Z"
+}

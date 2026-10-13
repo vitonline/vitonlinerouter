@@ -1,5 +1,7 @@
 import { getAdapter } from "../driver.js";
+import shutdown from "../../../../shutdown.cjs";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
+import { redactSecrets } from "open-sse/utils/redactSecrets";
 
 const DEFAULT_MAX_RECORDS = 200;
 const DEFAULT_BATCH_SIZE = 20;
@@ -15,10 +17,12 @@ async function getObservabilityConfig() {
   try {
     const { getSettings } = await import("./settingsRepo.js");
     const settings = await getSettings();
+    const captureContent = settings.logRequestContent === true;
     const envRequestLogs = process.env.ENABLE_REQUEST_LOGS;
     if (envRequestLogs !== undefined) {
       const enabled = envRequestLogs.toLowerCase() === "true";
       cachedConfig = {
+        captureContent,
         enabled,
         maxRecords: settings.observabilityMaxRecords || parseInt(process.env.OBSERVABILITY_MAX_RECORDS || String(DEFAULT_MAX_RECORDS), 10),
         batchSize: settings.observabilityBatchSize || parseInt(process.env.OBSERVABILITY_BATCH_SIZE || String(DEFAULT_BATCH_SIZE), 10),
@@ -35,6 +39,7 @@ async function getObservabilityConfig() {
       : envFallback;
 
     cachedConfig = {
+      captureContent,
       enabled,
       maxRecords: settings.observabilityMaxRecords || parseInt(process.env.OBSERVABILITY_MAX_RECORDS || String(DEFAULT_MAX_RECORDS), 10),
       batchSize: settings.observabilityBatchSize || parseInt(process.env.OBSERVABILITY_BATCH_SIZE || String(DEFAULT_BATCH_SIZE), 10),
@@ -111,10 +116,10 @@ async function flushToDatabase() {
             status: item.status || null,
             latency: item.latency || {},
             tokens: item.tokens || {},
-            request: truncateField(item.request, config.maxJsonSize),
-            providerRequest: truncateField(item.providerRequest, config.maxJsonSize),
-            providerResponse: truncateField(item.providerResponse, config.maxJsonSize),
-            response: truncateField(item.response, config.maxJsonSize),
+            request: config.captureContent ? truncateField(redactSecrets(item.request), config.maxJsonSize) : { redacted: true },
+            providerRequest: config.captureContent ? truncateField(redactSecrets(item.providerRequest), config.maxJsonSize) : { redacted: true },
+            providerResponse: config.captureContent ? truncateField(redactSecrets(item.providerResponse), config.maxJsonSize) : { redacted: true },
+            response: config.captureContent ? truncateField(redactSecrets(item.response), config.maxJsonSize) : { redacted: true },
             pxpipe: item.pxpipe || undefined,
           };
 
@@ -216,9 +221,7 @@ function ensureShutdownHandler() {
   process.off("exit", _shutdownHandler);
 
   process.on("beforeExit", _shutdownHandler);
-  process.on("SIGINT", _shutdownHandler);
-  process.on("SIGTERM", _shutdownHandler);
-  process.on("exit", _shutdownHandler);
+  shutdown.registerShutdown("request-details", _shutdownHandler, 50);
 }
 
 ensureShutdownHandler();

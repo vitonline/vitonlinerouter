@@ -25,8 +25,11 @@ function isCertExpired(certPath) {
  * This Root CA will sign all dynamic leaf certificates
  */
 function generateRootCA() {
+  fs.mkdirSync(MITM_DIR, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") fs.chmodSync(MITM_DIR, 0o700);
   const exists = fs.existsSync(ROOT_CA_KEY_PATH) && fs.existsSync(ROOT_CA_CERT_PATH);
   if (exists && !isCertExpired(ROOT_CA_CERT_PATH)) {
+    fs.chmodSync(ROOT_CA_KEY_PATH, 0o600);
     console.log("✅ Root CA already exists");
     return { key: ROOT_CA_KEY_PATH, cert: ROOT_CA_CERT_PATH };
   }
@@ -86,7 +89,7 @@ function generateRootCA() {
   const privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
   const certPem = forge.pki.certificateToPem(cert);
 
-  fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem);
+  fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem, { mode: 0o600 });
   fs.writeFileSync(ROOT_CA_CERT_PATH, certPem);
 
   console.log("✅ Root CA generated successfully");
@@ -101,6 +104,7 @@ function loadRootCA() {
     throw new Error("Root CA not found. Generate it first.");
   }
 
+  fs.chmodSync(ROOT_CA_KEY_PATH, 0o600);
   const keyPem = fs.readFileSync(ROOT_CA_KEY_PATH, "utf8");
   const certPem = fs.readFileSync(ROOT_CA_CERT_PATH, "utf8");
 

@@ -2,6 +2,8 @@ import PropTypes from "prop-types";
 import { CapacityBadges } from "@/shared/components";
 
 export default function ModelRow({ model, fullModel, alias, copied, onCopy, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting, onDisable, caps, thinkingSuffix }) {
+  const testResult = typeof testStatus === "object" ? testStatus : null;
+  testStatus = testResult ? (testResult.ok ? "ok" : "error") : testStatus;
   const displayModel = thinkingSuffix ? `${fullModel}(${thinkingSuffix})` : fullModel;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
@@ -30,6 +32,12 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
             {model.name && <span className="truncate text-[9px] italic text-text-muted/70">{model.name}</span>}
             <CapacityBadges caps={caps} colorOverride="text-text-muted/70" size={12} />
           </span>
+          {testResult && !isTesting && (
+            <span title={`${testResult.error || ""}${testResult.testedAt ? ` · Tested ${new Date(testResult.testedAt).toLocaleString()}` : ""}`} className={`text-[11px] break-words pl-1 ${testResult.ok ? "text-green-500" : "text-red-500"}`}>
+              {testResult.ok ? "Last test passed" : testResult.reason}
+              {testResult.testedAt && <span className="block text-[9px] text-text-muted">Tested {new Date(testResult.testedAt).toLocaleString()}</span>}
+            </span>
+          )}
         </div>
         {onTest && (
           <div className="relative shrink-0 group/btn">
@@ -90,7 +98,7 @@ ModelRow.propTypes = {
   alias: PropTypes.string,
   copied: PropTypes.string,
   onCopy: PropTypes.func.isRequired,
-  testStatus: PropTypes.oneOf(["ok", "error"]),
+  testStatus: PropTypes.oneOfType([PropTypes.oneOf(["ok", "error"]), PropTypes.object]),
   isCustom: PropTypes.bool,
   isFree: PropTypes.bool,
   onDeleteAlias: PropTypes.func,

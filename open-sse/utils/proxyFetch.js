@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { MEMORY_CONFIG } from "../config/runtimeConfig.js";
+import { MEMORY_CONFIG, FETCH_CONNECT_TIMEOUT_MS } from "../config/runtimeConfig.js";
 import { dbg } from "./debugLog.js";
 
 const originalFetch = globalThis.fetch;
@@ -237,17 +237,15 @@ async function getDispatcher(proxyUrl) {
  */
 async function createBypassRequest(parsedUrl, realIP, options) {
   const httpsModule = await import("https");
-  const netModule = await import("net");
   // CJS modules expose exports via .default in ESM dynamic import context
   const https = httpsModule.default ?? httpsModule;
-  const net = netModule.default ?? netModule;
 
   return new Promise((resolve, reject) => {
-    const socket = new net.Socket();
-
-    socket.connect(HTTPS_PORT, realIP, () => {
       const reqOptions = {
-        socket,
+        hostname: realIP,
+        port: parsedUrl.port || HTTPS_PORT,
+        agent: false,
+        signal: options.signal,
         // SNI + cert hostname are validated against the hostname the caller
         // asked for, not the IP we connected to. This keeps the DNS-bypass
         // (avoiding /etc/hosts MITM) while still rejecting on-path attackers
@@ -258,40 +256,33 @@ async function createBypassRequest(parsedUrl, realIP, options) {
         path: parsedUrl.pathname + parsedUrl.search,
         method: options.method || "POST",
         headers: {
-          ...options.headers,
+          ...(options.headers instanceof Headers ? Object.fromEntries(options.headers.entries()) : options.headers),
           Host: parsedUrl.hostname,
         },
       };
 
       const req = https.request(reqOptions, (res) => {
-        const response = {
-          ok: res.statusCode >= HTTP_SUCCESS_MIN && res.statusCode < HTTP_SUCCESS_MAX,
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(res.headers)) {
+          for (const item of Array.isArray(value) ? value : [value]) if (item != null) headers.append(name, String(item));
+        }
+        const response = new Response([204, 304].includes(res.statusCode) ? null : Readable.toWeb(res), {
           status: res.statusCode,
           statusText: res.statusMessage,
-          headers: new Map(Object.entries(res.headers)),
-          body: Readable.toWeb(res),
-          text: async () => {
-            const chunks = [];
-            for await (const chunk of res) chunks.push(chunk);
-            return Buffer.concat(chunks).toString();
-          },
-          json: async () => JSON.parse(await response.text()),
-        };
+          headers,
+        });
         resolve(response);
       });
 
       req.on("error", reject);
       if (options.body) {
-        req.write(typeof options.body === "string" ? options.body : JSON.stringify(options.body));
+        req.write(typeof options.body === "string" || options.body instanceof Uint8Array ? options.body : options.body instanceof URLSearchParams ? options.body.toString() : JSON.stringify(options.body));
       }
       req.end();
-    });
-
-    socket.on("error", reject);
   });
 }
 
-export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
+async function proxyAwareFetchInternal(url, options = {}, proxyOptions = null) {
   const targetUrl = typeof url === "string" ? url : url.toString();
 
   // Vercel relay: forward request via relay headers
@@ -321,6 +312,7 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
         const dispatcher = await getDispatcher(proxyUrl);
         return await originalFetch(url, { ...options, dispatcher });
       } catch (proxyError) {
+        if (options.signal?.aborted) throw proxyError;
         if (proxyOptions?.strictProxy === true) {
           throw new Error(`[ProxyFetch] Proxy required but failed (strictProxy=true): ${proxyError.message}`);
         }
@@ -333,6 +325,7 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
       const realIP = await resolveRealIP(parsedUrl.hostname);
       if (realIP) return await createBypassRequest(parsedUrl, realIP, options);
     } catch (error) {
+      if (options.signal?.aborted) throw error;
       console.warn(`[ProxyFetch] MITM bypass failed: ${error.message}`);
     }
   }
@@ -342,6 +335,7 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
       const dispatcher = await getDispatcher(proxyUrl);
       return await originalFetch(url, { ...options, dispatcher });
     } catch (proxyError) {
+      if (options.signal?.aborted) throw proxyError;
       // If strictProxy is enabled, fail hard instead of falling back to direct
       if (proxyOptions?.strictProxy === true) {
         throw new Error(`[ProxyFetch] Proxy required but failed (strictProxy=true): ${proxyError.message}`);
@@ -354,6 +348,14 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
   // got-scraping disabled — use native fetch directly
   // (Re-enable per-host by wrapping with tryGotScrapingFetch when needed)
   return originalFetch(url, options);
+}
+
+export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
+  const controller = new AbortController();
+  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
+  const timer = setTimeout(() => controller.abort(new Error("Provider response headers timed out")), FETCH_CONNECT_TIMEOUT_MS);
+  try { return await proxyAwareFetchInternal(url, { ...options, signal }, proxyOptions); }
+  finally { clearTimeout(timer); }
 }
 
 /**

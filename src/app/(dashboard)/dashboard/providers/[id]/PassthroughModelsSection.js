@@ -6,6 +6,8 @@ import { Button } from "@/shared/components";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 
 function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias, onTest, testStatus, isTesting }) {
+  const testResult = typeof testStatus === "object" ? testStatus : null;
+  testStatus = testResult ? (testResult.ok ? "ok" : "error") : testStatus;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
     : testStatus === "error"
@@ -29,6 +31,7 @@ function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{modelId}</p>
+        {testResult && !isTesting && <p title={testResult.error || undefined} className={`text-[11px] break-words ${testResult.ok ? "text-green-500" : "text-red-500"}`}>{testResult.reason}</p>}
 
         <div className="flex items-center gap-1 mt-1">
         <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
@@ -83,7 +86,7 @@ PassthroughModelRow.propTypes = {
   onCopy: PropTypes.func.isRequired,
   onDeleteAlias: PropTypes.func.isRequired,
   onTest: PropTypes.func,
-  testStatus: PropTypes.oneOf(["ok", "error"]),
+  testStatus: PropTypes.oneOfType([PropTypes.oneOf(["ok", "error"]), PropTypes.object]),
   isTesting: PropTypes.bool,
 };
 

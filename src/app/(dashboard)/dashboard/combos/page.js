@@ -593,6 +593,8 @@ function ComboCard({ combo, getCaps, comboByName = {}, activeProviders = [], cop
           </div>
           <div className="min-w-0 flex-1">
             <code className="block truncate font-mono text-sm font-medium">{combo.name}</code>
+              {combo.name === "MyDefaultProvider" && <p className="mt-1 text-xs text-text-muted">Automatically includes enabled chat models from connected providers when listed or used.</p>}
+              {combo.health && <p className="mt-1 text-xs text-text-muted">{combo.health.eligible} eligible · {combo.health.skipped} skipped by health checks · up to {combo.health.maxAttempts} model attempts · {combo.health.selectionTimeoutSeconds}s selection deadline</p>}
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
               {combo.models.length === 0 ? (
                 <span className="text-xs text-text-muted italic">No models</span>

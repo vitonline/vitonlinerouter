@@ -6,6 +6,10 @@ import { checkFallbackError, formatRetryAfter } from "./accountFallback.js";
 import { unavailableResponse } from "../utils/error.js";
 import { getCapabilitiesForModel } from "../providers/capabilities.js";
 import { extractTextContent } from "../translator/formats/gemini.js";
+import { runComboAttempt } from "./comboDeadline.js";
+import { translateResponse, initState } from "../translator/index.js";
+import { FORMATS } from "../translator/formats.js";
+import { formatSSE } from "../utils/streamHelpers.js";
 
 // Hard capabilities = input modalities; missing one drops request data (e.g. image
 // stripped). Must be prioritized. Soft (e.g. search) only degrades a feature.
@@ -75,10 +79,11 @@ export function reorderByCapabilities(models, required) {
   };
 
   // Stable sort by tier (Array.prototype.sort is stable in modern engines).
-  return models
+  const reordered = models
     .map((m, i) => ({ m, i, t: tierOf(m) }))
     .sort((a, b) => a.t - b.t || a.i - b.i)
     .map((x) => x.m);
+  return reordered.every((model, index) => model === models[index]) ? models : reordered;
 }
 
 /**
@@ -178,7 +183,11 @@ export function detectRequiredCapabilities(body) {
   const contents = body.contents || body.request?.contents;                      // gemini / antigravity
   for (const c of trailingUserItems(contents)) scanContent(c.parts);
 
-  // search: temporarily disabled in auto-switch (feature not wired yet).
+  // Native web search is a soft capability: preserve every fallback model.
+  for (const tool of body.tools || []) {
+    if (typeof tool?.type === "string" && /^web_search(?:_|$)/.test(tool.type)) required.add("search");
+    if (tool?.googleSearch || tool?.google_search) required.add("search");
+  }
 
   return required;
 }
@@ -277,7 +286,8 @@ export function getComboModelsFromData(modelStr, combosData) {
  * @param {number|string} [options.comboStickyLimit=1] - Requests per combo model before switching
  * @returns {Promise<Response>}
  */
-export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1, autoSwitch = true }) {
+export async function handleComboChat({ body, models, handleSingleModel, log, comboName, comboStrategy, comboStickyLimit = 1, autoSwitch = true, maxAttempts = Infinity, timeoutMs = Infinity, signal }) {
+  const deadline = Date.now() + timeoutMs;
   // Apply rotation strategy if enabled
   let rotatedModels = getRotatedModels(models, comboName, comboStrategy, comboStickyLimit);
 
@@ -297,12 +307,13 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
   let earliestRetryAfter = null;
   let lastStatus = null;
 
-  for (let i = 0; i < rotatedModels.length; i++) {
+  for (let i = 0; i < Math.min(rotatedModels.length, maxAttempts); i++) {
+    if (signal?.aborted || Date.now() >= deadline) break;
     const modelStr = rotatedModels[i];
     log.info("COMBO", `Trying model ${i + 1}/${rotatedModels.length}: ${modelStr}`);
 
     try {
-      const result = await handleSingleModel(body, modelStr);
+      const result = await runComboAttempt((model, attemptSignal) => handleSingleModel(body, model, { signal: attemptSignal }), modelStr, { signal, remainingMs: deadline - Date.now() });
       
       // Success (2xx) - return response
       if (result.ok) {
@@ -345,7 +356,7 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
       if (cooldownMs && cooldownMs > 0 && cooldownMs <= 5000 &&
           (result.status === 503 || result.status === 502 || result.status === 504)) {
         log.info("COMBO", `Model ${modelStr} transient ${result.status}, waiting ${cooldownMs}ms before next`);
-        await new Promise(r => setTimeout(r, cooldownMs));
+        await new Promise(r => setTimeout(r, Math.min(cooldownMs, Math.max(0, deadline - Date.now()))));
       }
 
       // Fallback to next model
@@ -365,8 +376,9 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
   // the request itself is invalid, but here the providers are simply unavailable
   // or have no active credentials. 503 is more accurate and retryable by clients.
   const allDisabled = lastError && lastError.toLowerCase().includes("no credentials");
-  const status = allDisabled ? 503 : (lastStatus || 503);
-  const msg = lastError || "All combo models unavailable";
+  const bounded = rotatedModels.length > maxAttempts || Date.now() >= deadline;
+  const status = signal?.aborted ? 499 : Date.now() >= deadline ? 504 : allDisabled || bounded ? 503 : (lastStatus || 503);
+  const msg = signal?.aborted ? "Combo request cancelled" : Date.now() >= deadline ? "Combo selection deadline exceeded" : bounded ? "Combo attempt limit reached; no model responded successfully" : lastError || "All combo models unavailable";
 
   if (earliestRetryAfter) {
     const retryHuman = formatRetryAfter(earliestRetryAfter);
@@ -544,7 +556,7 @@ function collectPanel(calls, { minPanel, stragglerGraceMs, panelHardTimeoutMs })
  * @param {Object} [options.tuning] - Override FUSION_DEFAULTS (minPanel, grace, timeout)
  * @returns {Promise<Response>}
  */
-export async function handleFusionChat({ body, models, handleSingleModel, log, comboName, judgeModel, tuning }) {
+export async function handleFusionChat({ body, models, handleSingleModel, log, comboName, judgeModel, tuning, signal, sourceFormat = FORMATS.OPENAI }) {
   const panel = Array.isArray(models) ? models.filter(Boolean) : [];
   if (panel.length === 0) {
     return new Response(
@@ -555,7 +567,7 @@ export async function handleFusionChat({ body, models, handleSingleModel, log, c
 
   // A single-model fusion has nothing to fuse — just answer directly.
   if (panel.length === 1) {
-    return handleSingleModel(body, panel[0]);
+    return handleSingleModel(structuredClone(body), panel[0], undefined, { signal });
   }
 
   const cfg = { ...FUSION_DEFAULTS, ...(tuning || {}) };
@@ -578,8 +590,14 @@ export async function handleFusionChat({ body, models, handleSingleModel, log, c
   }
 
   const t0 = Date.now();
-  const calls = panel.map((m) => withTimeout(handleSingleModel(panelBody, m, true), cfg.panelHardTimeoutMs));
+  const panelControllers = panel.map(() => new AbortController());
+  const calls = panel.map((m, i) => runComboAttempt(
+    (model, attemptSignal) => handleSingleModel(structuredClone(panelBody), model, true, { signal: attemptSignal }), m,
+    { signal: signal ? AbortSignal.any([signal, panelControllers[i].signal]) : panelControllers[i].signal, remainingMs: cfg.panelHardTimeoutMs }
+  ).catch(__error => ({ __error })));
   const settled = await collectPanel(calls, { ...cfg, minPanel });
+  panelControllers.forEach((controller, i) => { if (!settled[i]) controller.abort(new Error("Fusion panel collection finished")); });
+  if (signal?.aborted) return new Response(null, { status: 499 });
   log.info("FUSION", `fan-out collected in ${Date.now() - t0}ms`);
 
   // 2. Collect successful answers.
@@ -595,7 +613,7 @@ export async function handleFusionChat({ body, models, handleSingleModel, log, c
       const json = await res.clone().json();
       const text = extractPanelText(json);
       if (text) {
-        answers.push({ model, text });
+        answers.push({ model, text, response: res });
         log.info("FUSION", `Panel ${model} ok (${text.length} chars)`);
       } else {
         log.warn("FUSION", `Panel ${model} returned empty content`);
@@ -615,11 +633,25 @@ export async function handleFusionChat({ body, models, handleSingleModel, log, c
   }
   if (answers.length === 1) {
     log.info("FUSION", `Only ${answers[0].model} succeeded — answering directly (no fusion)`);
-    return handleSingleModel(body, answers[0].model);
+    if (!body.stream) return answers[0].response;
+    const answer = answers[0];
+    const state = { ...initState(sourceFormat), model: answer.model };
+    const chunks = [
+      { id: `chatcmpl-fusion-${Date.now()}`, model: answer.model, choices: [{ index: 0, delta: { role: "assistant", content: answer.text }, finish_reason: null }] },
+      { model: answer.model, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] },
+      null,
+    ];
+    let output = "";
+    for (const chunk of chunks) {
+      const translated = translateResponse(FORMATS.OPENAI, sourceFormat, chunk, state);
+      for (const item of (Array.isArray(translated) ? translated : translated ? [translated] : [])) output += formatSSE(item, sourceFormat);
+    }
+    if (sourceFormat === FORMATS.OPENAI) output += "data: [DONE]\n\n";
+    return new Response(output, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
   }
 
   // 4. Judge analyzes + writes one final answer (streams to client if requested).
   const judgeBody = appendUserTurn(body, buildJudgePrompt(answers));
   log.info("FUSION", `Judging ${answers.length} answers with ${judge}`);
-  return handleSingleModel(judgeBody, judge);
+  return handleSingleModel(structuredClone(judgeBody), judge, undefined, { signal });
 }

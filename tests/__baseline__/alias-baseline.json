@@ -116,7 +116,9 @@
     "devin": "devin",
     "devin-cli": "devin-cli",
     "morph": "morph",
-    "morphllm": "morph"
+    "morphllm": "morph",
+    "xk": "xkiro",
+    "xkiro": "xkiro"
   },
   "idToAlias": {
     "agnes": "agnes",
@@ -206,6 +208,7 @@
     "xai": "xai",
     "xiaomi-mimo": "xiaomi-mimo",
     "xiaomi-tokenplan": "xiaomi-tokenplan",
+    "xkiro": "xkiro",
     "zed": "zd"
   },
   "modelKeys": [
@@ -311,6 +314,7 @@
     "xiaomi-mimo",
     "xiaomi-mimo-tts-models",
     "xiaomi-tokenplan",
+    "xkiro",
     "zd"
   ]
 }

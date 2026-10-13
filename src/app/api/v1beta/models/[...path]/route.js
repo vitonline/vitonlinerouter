@@ -82,7 +82,10 @@ export async function POST(request, { params }) {
         .replace(":generateContent", "");
     }
 
-    const body = await request.json();
+    let body;
+    try { body = await request.json(); } catch {
+      return Response.json({ error: { message: "Invalid JSON body", code: 400 } }, { status: 400 });
+    }
 
     if (isGeminiNativeTtsRequest(model, body)) {
       return await forwardGeminiNativeRequest(request, body, model, action);
@@ -101,6 +104,7 @@ export async function POST(request, { params }) {
       method: "POST",
       headers: request.headers,
       body: JSON.stringify(convertedBody),
+      signal: request.signal,
     });
 
     const response = await handleChat(newRequest);
@@ -117,7 +121,7 @@ export async function POST(request, { params }) {
   } catch (error) {
     console.log("Error handling Gemini request:", error);
     return Response.json(
-      { error: { message: error.message, code: 500 } },
+      { error: { message: "Gemini request failed", code: 500 } },
       { status: 500 }
     );
   }

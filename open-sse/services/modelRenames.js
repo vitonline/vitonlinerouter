@@ -86,7 +86,7 @@ function rewriteModelFields(payload, publicModel) {
 }
 
 function rewriteSseLine(line, publicModel) {
-  const match = /^(data:\s?)(.*)$/.exec(line);
+  const match = /^(data:[ \t]?)([^\n]*)$/.exec(line);
   if (!match || !match[2] || match[2] === "[DONE]") return line;
   const trailingCr = match[2].endsWith("\r") ? "\r" : "";
   const json = trailingCr ? match[2].slice(0, -1) : match[2];

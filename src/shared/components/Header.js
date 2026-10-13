@@ -73,7 +73,7 @@ const getPageInfo = (pathname) => {
   if (pathname.includes("/models") || (pathname.includes("/providers") && !pathname.includes("/media-providers")))
     return {
       title: "Models",
-      description: "Every model from free providers, ready to route",
+      description: "Recommended models and your provider catalog",
       icon: "neurology",
       breadcrumbs: [],
     };

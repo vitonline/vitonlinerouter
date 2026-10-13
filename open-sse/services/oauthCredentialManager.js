@@ -4,11 +4,13 @@ import {
   refreshTokenByProvider,
 } from "./tokenRefresh.js";
 import { PROVIDER_OAUTH } from "../providers/index.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 // Single source: codex.oauth.maxRefreshAgeMs (8 days) — proactive refresh window
 export const CODEX_MAX_REFRESH_AGE_MS = PROVIDER_OAUTH["codex"]?.maxRefreshAgeMs;
 
 const refreshLocks = new Map();
+const refreshContext = new AsyncLocalStorage();
 
 function parseTimeMs(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -133,11 +135,14 @@ function getRefreshLockKey(provider, credentials) {
 
 export async function withCredentialRefreshLock(provider, credentials, refreshFn) {
   const key = getRefreshLockKey(provider, credentials);
+  // Reactive refresh may call an executor that uses this same shared lock.
+  // Re-enter within the owning async chain without awaiting our own promise.
+  if (refreshContext.getStore()?.has(key)) return refreshFn();
   const existing = refreshLocks.get(key);
   if (existing) return existing;
 
   const pending = Promise.resolve()
-    .then(refreshFn)
+    .then(() => refreshContext.run(new Set([...(refreshContext.getStore() || []), key]), refreshFn))
     .finally(() => {
       refreshLocks.delete(key);
     });

@@ -1,0 +1,130 @@
+{
+  "provider": "intern",
+  "baseUrl": "https://discovery-api.intern-ai.org.cn/v1",
+  "listingStatus": 200,
+  "listedModels": [
+    "Agents-A1",
+    "Atria-Dawn-Preview",
+    "deepseek-v4-flash-0731",
+    "deepseek-v4-flash-vision",
+    "deepseek-v4-pro-0813",
+    "glm-5.3",
+    "intern-s2",
+    "kimi-k2.6",
+    "minimax-m3",
+    "qwen3.8-27b"
+  ],
+  "tests": [
+    {
+      "model": "intern/Agents-A1",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 18144,
+      "testedAt": "2026-10-12T10:08:11.767Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/Atria-Dawn-Preview",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 10338,
+      "testedAt": "2026-10-12T10:08:22.130Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/deepseek-v4-flash-0731",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 2368,
+      "testedAt": "2026-10-12T10:08:24.514Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/deepseek-v4-flash-vision",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 6075,
+      "testedAt": "2026-10-12T10:08:30.613Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/deepseek-v4-pro-0813",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 2448,
+      "testedAt": "2026-10-12T10:08:33.074Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/glm-5.3",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 2704,
+      "testedAt": "2026-10-12T10:08:35.794Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/intern-s2",
+      "kind": "llm",
+      "ok": false,
+      "reason": "Request timed out",
+      "error": "The operation was aborted due to timeout",
+      "status": null,
+      "latencyMs": 60015,
+      "testedAt": "2026-10-12T10:09:35.820Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/kimi-k2.6",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 5356,
+      "testedAt": "2026-10-12T10:09:41.193Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/minimax-m3",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 910,
+      "testedAt": "2026-10-12T10:09:42.116Z",
+      "state": "done"
+    },
+    {
+      "model": "intern/qwen3.8-27b",
+      "kind": "llm",
+      "ok": true,
+      "reason": "Test passed",
+      "error": "",
+      "status": 200,
+      "latencyMs": 971,
+      "testedAt": "2026-10-12T10:09:43.108Z",
+      "state": "done"
+    }
+  ],
+  "testedAt": "2026-10-12T10:07:53.605Z"
+}

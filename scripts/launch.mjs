@@ -95,5 +95,13 @@ const cli = spawn(process.execPath, [path.join(cliDir, "cli.js"), ...process.arg
   stdio: "inherit",
 });
 // The CLI handles Ctrl-C, terminal close and tray mode itself; this wrapper just waits for it.
-for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => {});
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => {
+  cli.kill(signal);
+  const deadline = setTimeout(() => { cli.kill("SIGKILL"); process.exit(1); }, 10_000);
+  deadline.unref();
+});
+cli.on("error", (error) => {
+  console.error(`Unable to launch ${name}: ${error.message}`);
+  process.exit(1);
+});
 cli.on("exit", (code, signal) => process.exit(signal ? 1 : code ?? 0));

@@ -20,6 +20,7 @@ function resetHealthStateOnActivation(existing, patch) {
   const normalized = {
     ...patch,
     testStatus: "active",
+    verificationNeeded: false,
     lastError: Object.hasOwn(patch, "lastError") ? patch.lastError : null,
     lastErrorAt: Object.hasOwn(patch, "lastErrorAt") ? patch.lastErrorAt : null,
     errorCode: null,

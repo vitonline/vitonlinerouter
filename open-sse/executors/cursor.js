@@ -1,6 +1,6 @@
 import { BaseExecutor } from "./base.js";
 import { PROVIDERS, PROVIDER_OAUTH } from "../config/providers.js";
-import { HTTP_STATUS } from "../config/runtimeConfig.js";
+import { HTTP_STATUS, MAX_DECOMPRESSED_FRAME_BYTES } from "../config/runtimeConfig.js";
 import {
   generateCursorBody,
   encodeField,
@@ -169,7 +169,7 @@ export function buildAgentRunFrame(messages, model, tools = []) {
 
 function extractAgentString(message, field) {
   const value = message?.get(field)?.[0]?.value;
-  return value ? Buffer.from(value).toString("utf8") : "";
+  return value instanceof Uint8Array ? Buffer.from(value).toString("utf8") : "";
 }
 
 function decodeAgentFrames(buffer, onFrame) {
@@ -177,11 +177,12 @@ function decodeAgentFrames(buffer, onFrame) {
   while (pending.length >= 5) {
     const flags = pending[0];
     const length = pending.readUInt32BE(1);
+    if (length > MAX_DECOMPRESSED_FRAME_BYTES) throw new Error("Cursor frame exceeds size limit");
     if (pending.length < 5 + length) break;
     let payload = pending.subarray(5, 5 + length);
     pending = pending.subarray(5 + length);
     if (flags & COMPRESS_FLAG.GZIP) {
-      payload = zlib.gunzipSync(payload);
+      payload = zlib.gunzipSync(payload, { maxOutputLength: MAX_DECOMPRESSED_FRAME_BYTES });
     }
     if (!(flags & COMPRESS_FLAG.TRAILER)) onFrame(payload);
   }
@@ -272,15 +273,15 @@ function decompressPayload(payload, flags) {
   ) {
     // Primary: try gzip decompression (standard gzip header 0x1f 0x8b)
     try {
-      return zlib.gunzipSync(payload);
+      return zlib.gunzipSync(payload, { maxOutputLength: MAX_DECOMPRESSED_FRAME_BYTES });
     } catch (gzipErr) {
       // Fallback: TRAILER and GZIP_TRAILER frames sometimes use raw zlib deflate format
       try {
-        return zlib.inflateSync(payload);
+        return zlib.inflateSync(payload, { maxOutputLength: MAX_DECOMPRESSED_FRAME_BYTES });
       } catch (deflateErr) {
         // Last resort: try raw deflate (no zlib header)
         try {
-          return zlib.inflateRawSync(payload);
+          return zlib.inflateRawSync(payload, { maxOutputLength: MAX_DECOMPRESSED_FRAME_BYTES });
         } catch (rawErr) {
           debugLog(
             `[DECOMPRESS ERROR] flags=${flags}, payloadSize=${payload.length}, gzip=${gzipErr.message}, deflate=${deflateErr.message}, raw=${rawErr.message}`
@@ -377,11 +378,12 @@ export class CursorExecutor extends BaseExecutor {
   }
 
   async makeFetchRequest(url, headers, body, signal, proxyOptions = null) {
+    const deadline = AbortSignal.timeout(HTTP2_TIMEOUT_MS);
     const response = await proxyAwareFetch(url, {
       method: "POST",
       headers,
       body,
-      signal
+      signal: signal ? AbortSignal.any([signal, deadline]) : deadline
     }, proxyOptions);
 
     return {
@@ -406,10 +408,12 @@ export class CursorExecutor extends BaseExecutor {
       let settled = false;
 
       // Ensure client is always closed on settle
+      let onAbort;
       const finish = (fn) => (...args) => {
         if (settled) return;
         settled = true;
         clearTimeout(hangTimeout);
+        if (onAbort) signal?.removeEventListener("abort", onAbort);
         client.close();
         fn(...args);
       };
@@ -441,7 +445,8 @@ export class CursorExecutor extends BaseExecutor {
       req.on("error", finish(reject));
 
       if (signal) {
-        const onAbort = finish(() => reject(new Error("Request aborted")));
+        onAbort = finish(() => reject(new Error("Request aborted")));
+        if (signal.aborted) return onAbort();
         signal.addEventListener("abort", onAbort, { once: true });
       }
 
@@ -578,18 +583,10 @@ export class CursorExecutor extends BaseExecutor {
 
     const status = Number(responseHeaders[":status"] || 0);
     if (status !== 200) {
-      let errorText = "";
-      try {
-        while (true) {
-          const { done, value } = await session.read();
-          if (done) break;
-          errorText += Buffer.from(value).toString("utf8");
-        }
-      } catch {}
       session.close();
       return {
         response: new Response(JSON.stringify({
-          error: { message: `Cursor AgentService ${status}: ${errorText || "request failed"}`, type: "api_error" },
+          error: { message: `Cursor AgentService request rejected (${status || 502})`, type: "api_error" },
         }), { status: status || HTTP_STATUS.SERVER_ERROR, headers: { "Content-Type": "application/json" } }),
         url,
         headers,
@@ -865,10 +862,9 @@ export class CursorExecutor extends BaseExecutor {
         : await this.makeFetchRequest(url, headers, transformedBody, signal, proxyOptions);
 
       if (response.status !== 200) {
-        const errorText = response.body?.toString() || "Unknown error";
         const errorResponse = new Response(JSON.stringify({
           error: {
-            message: `[${response.status}]: ${errorText}`,
+            message: `Cursor request rejected (${response.status})`,
             type: "invalid_request_error",
             code: ""
           }

@@ -19,7 +19,7 @@ import { upstreamResponseHeaders } from "open-sse/utils/upstreamHeaders.js";
 import { handleComboChat, handleFusionChat, detectRequiredCapabilities } from "open-sse/services/combo.js";
 import { augmentModelsWithCapacityAdapter, withCapacityAdapterStripping, getActiveAdapterStrategy } from "open-sse/services/capacityAdapter.js";
 import { handleBypassRequest } from "open-sse/utils/bypassHandler.js";
-import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
+import { HTTP_STATUS, MAX_ACCOUNT_ATTEMPTS, ACCOUNT_FALLBACK_DELAY_MS } from "open-sse/config/runtimeConfig.js";
 import { detectFormatByEndpoint } from "open-sse/translator/formats.js";
 import * as log from "../utils/logger.js";
 import { updateProviderCredentials, checkAndRefreshToken } from "../services/tokenRefresh.js";
@@ -28,6 +28,11 @@ import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
 import { findModelRename, presentResponseAsModel } from "open-sse/services/modelRenames.js";
 import { isProviderAllowed } from "open-sse/providers/policy.js";
 import { BRAND } from "open-sse/config/brand.js";
+import { getHealthyComboModels } from "@/shared/services/comboHealth";
+import { getRecommendedModels, RECOMMENDED_COMBO } from "@/shared/services/recommendedModels";
+import { traceComboRouting } from "@/shared/services/routingTrace";
+import { reserveSpend } from "@/lib/db/repos/spendControl";
+import { randomUUID } from "node:crypto";
 
 /**
  * Handle chat completion request
@@ -103,7 +108,17 @@ export async function handleChat(request, clientRawRequest = null) {
     const comboStrategies = settings.comboStrategies || {};
     const comboSpecificStrategy = comboStrategies[modelStr]?.fallbackStrategy;
     const comboStrategy = comboSpecificStrategy || settings.comboStrategy || "fallback";
-    const augmentedModels = augmentModelsWithCapacityAdapter(comboModels, requiredCapabilities, settings);
+    let augmentedModels = augmentModelsWithCapacityAdapter(comboModels, requiredCapabilities, settings);
+    if (modelStr === "MyDefaultProvider" || modelStr === RECOMMENDED_COMBO) {
+      if (modelStr === RECOMMENDED_COMBO) {
+        const verified = new Set(await getRecommendedModels());
+        augmentedModels = augmentedModels.filter(model => verified.has(model));
+      }
+      const health = await getHealthyComboModels(augmentedModels);
+      augmentedModels = health.eligible;
+      log.info("COMBO", `Health filter: ${health.eligible.length} eligible, ${health.skipped.length} skipped`);
+      if (!augmentedModels.length) return errorResponse(503, `${modelStr} has no eligible models; review provider issues or retest a model`);
+    }
     const adapterAdded = augmentedModels.filter((m) => !comboModels.includes(m));
 
     if (comboStrategy === "fusion") {
@@ -111,34 +126,38 @@ export async function handleChat(request, clientRawRequest = null) {
       return handleFusionChat({
         body,
         models: comboModels,
-        handleSingleModel: (b, m, isPanel) => {
+        handleSingleModel: (b, m, isPanel, options) => {
           let cleanRawReq = clientRawRequest;
           if (isPanel && clientRawRequest) {
             const { tools, tool_choice, ...cleanBody } = clientRawRequest.body || {};
             cleanRawReq = { ...clientRawRequest, body: cleanBody };
           }
-          return handleSingleModelChat(b, m, cleanRawReq, request, apiKey);
+          return handleSingleModelChat(b, m, cleanRawReq, request, apiKey, options?.signal);
         },
         log,
         comboName: modelStr,
         judgeModel: comboStrategies[modelStr]?.judgeModel,
         tuning: comboStrategies[modelStr]?.fusionTuning,
+        signal: request.signal,
+        sourceFormat: detectFormatByEndpoint(clientRawRequest?.endpoint, body),
       });
     }
 
-    const comboStickyLimit = settings.comboStickyRoundRobinLimit;
+    const comboStickyLimit = comboStrategies[modelStr]?.stickyRoundRobinLimit ?? settings.comboStickyRoundRobinLimit;
     log.info("CHAT", `Combo "${modelStr}" with ${augmentedModels.length} models (strategy: ${comboStrategy}, sticky: ${comboStickyLimit})`);
-    return handleComboChat({
+    return traceComboRouting(handleComboChat, {
       body,
       models: augmentedModels,
       handleSingleModel: withCapacityAdapterStripping(
-        (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+        (b, m, options) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, options?.signal),
         adapterAdded
       ),
       log,
       comboName: modelStr,
       comboStrategy,
-      comboStickyLimit
+      comboStickyLimit,
+      signal: request.signal,
+      ...(["MyDefaultProvider", RECOMMENDED_COMBO].includes(modelStr) ? { maxAttempts: 3, timeoutMs: 60000, signal: request.signal } : {})
     });
   }
 
@@ -148,34 +167,40 @@ export async function handleChat(request, clientRawRequest = null) {
   if (soloAugmented.length > 1) {
     const adapterAdded = soloAugmented.filter((m) => m !== modelStr);
     log.info("CHAT", `Capacity adapter for [${[...requiredCapabilities].join(",")}] on "${modelStr}" → trying ${soloAugmented.join(", ")}`);
-    return handleComboChat({
+    return traceComboRouting(handleComboChat, {
       body,
       models: soloAugmented,
       handleSingleModel: withCapacityAdapterStripping(
-        (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+        (b, m, options) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, options?.signal),
         adapterAdded
       ),
       log,
       comboName: modelStr,
+      signal: request.signal,
       comboStrategy: getActiveAdapterStrategy(requiredCapabilities, settings)
     });
   }
 
-  return handleSingleModelChat(body, modelStr, clientRawRequest, request, apiKey);
+  return traceComboRouting(options => options.handleSingleModel(options.body, modelStr), {
+    body,
+    comboName: modelStr,
+    signal: request.signal,
+    handleSingleModel: (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+  });
 }
 
 /**
  * Handle single model chat request. A public model rename (brand.json → models.renames)
  * is routed to its upstream target and the response is presented under the public name.
  */
-async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {
+async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null, signal = null) {
   const rename = findModelRename(modelStr);
-  if (!rename) return routeSingleModelChat(body, modelStr, clientRawRequest, request, apiKey);
-  const response = await routeSingleModelChat(body, rename.target, clientRawRequest, request, apiKey);
+  if (!rename) return routeSingleModelChat(body, modelStr, clientRawRequest, request, apiKey, signal);
+  const response = await routeSingleModelChat(body, rename.target, clientRawRequest, request, apiKey, signal);
   return presentResponseAsModel(response, rename, modelStr);
 }
 
-async function routeSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {
+async function routeSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null, signal = null) {
   const modelInfo = await getModelInfo(modelStr);
 
   // If provider is null, this might be a combo name - check and handle
@@ -196,34 +221,39 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
         return handleFusionChat({
           body,
           models: comboModels,
-          handleSingleModel: (b, m, isPanel) => {
+          handleSingleModel: (b, m, isPanel, options) => {
             let cleanRawReq = clientRawRequest;
             if (isPanel && clientRawRequest) {
               const { tools, tool_choice, ...cleanBody } = clientRawRequest.body || {};
               cleanRawReq = { ...clientRawRequest, body: cleanBody };
             }
-            return handleSingleModelChat(b, m, cleanRawReq, request, apiKey);
+            return handleSingleModelChat(b, m, cleanRawReq, request, apiKey, options?.signal);
           },
           log,
           comboName: modelStr,
           judgeModel: comboStrategies[modelStr]?.judgeModel,
           tuning: comboStrategies[modelStr]?.fusionTuning,
+          signal: signal || request?.signal,
+          sourceFormat: detectFormatByEndpoint(clientRawRequest?.endpoint, body),
         });
       }
 
-      const comboStickyLimit = chatSettings.comboStickyRoundRobinLimit;
+      const comboStickyLimit = comboStrategies[modelStr]?.stickyRoundRobinLimit ?? chatSettings.comboStickyRoundRobinLimit;
       log.info("CHAT", `Combo "${modelStr}" with ${augmentedModels.length} models (strategy: ${comboStrategy}, sticky: ${comboStickyLimit})`);
       return handleComboChat({
         body,
         models: augmentedModels,
         handleSingleModel: withCapacityAdapterStripping(
-          (b, m) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey),
+          (b, m, options) => handleSingleModelChat(b, m, clientRawRequest, request, apiKey, options?.signal),
           adapterAdded
         ),
         log,
         comboName: modelStr,
         comboStrategy,
-        comboStickyLimit
+        comboStickyLimit,
+        signal: signal || request?.signal,
+        maxAttempts: MAX_ACCOUNT_ATTEMPTS,
+        timeoutMs: 60_000,
       });
     }
     log.warn("CHAT", "Invalid model format", { model: modelStr });
@@ -249,7 +279,9 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
   let lastStatus = null;
   let lastHeaders = null;
 
-  while (true) {
+  let accountAttempts = 0;
+  while (accountAttempts++ < MAX_ACCOUNT_ATTEMPTS) {
+    if (signal?.aborted) return errorResponse(499, "Combo request cancelled");
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
 
     // All accounts unavailable
@@ -281,15 +313,20 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
       }
     }
 
+    let spend;
+    try { spend = await reserveSpend(provider, model, body); }
+    catch (error) { return errorResponse(402, error.message); }
+    const attemptRawRequest = { ...clientRawRequest, budgetReservationId: spend.id, usageEventId: randomUUID() };
     // Use shared chatCore
     const chatSettings = await getSettings();
     const providerThinking = (chatSettings.providerThinking || {})[provider] || null;
     const result = await handleChatCore({
-      body: { ...body, model: `${provider}/${model}` },
+      signal,
+      body: { ...spend.body, model: `${provider}/${model}` },
       modelInfo: { provider, model },
       credentials: refreshedCredentials,
       log,
-      clientRawRequest,
+      clientRawRequest: attemptRawRequest,
       connectionId: credentials.connectionId,
       userAgent,
       apiKey,
@@ -326,7 +363,12 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
       }
     });
 
-    if (result.success) return result.response;
+    if (result.success) {
+      const headers = new Headers(result.response.headers);
+      headers.set("x-fr-upstream-model", `${provider}/${model}`);
+      return new Response(result.response.body, { status: result.response.status, headers });
+    }
+    if (signal?.aborted) return errorResponse(499, "Combo request cancelled");
 
     // Antigravity 409/429: refresh live quota to get exact resetAt before locking
     let quotaResetMs = null;
@@ -348,6 +390,7 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
     if (shouldFallback) {
       log.warn("FALLBACK", `⇄ ACC:${credentials.connectionName} UNAVAILABLE (${result.status}) → NEXT ACCOUNT`);
       excludeConnectionIds.add(credentials.connectionId);
+      await new Promise(resolve => setTimeout(resolve, ACCOUNT_FALLBACK_DELAY_MS));
       lastError = result.error;
       lastStatus = result.status;
       lastHeaders = upstreamResponseHeaders(result.response?.headers);
@@ -356,4 +399,5 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
 
     return result.response;
   }
+  return errorResponse(lastStatus || HTTP_STATUS.SERVICE_UNAVAILABLE, lastError || "Account retry limit reached");
 }

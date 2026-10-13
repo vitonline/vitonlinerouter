@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getAdapter } from "../driver.js";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
+import { validateProviderNode } from "@/shared/utils/providerNodeValidation";
 
 function rowToNode(row) {
   if (!row) return null;
@@ -65,7 +66,11 @@ export async function createProviderNode(data) {
     createdAt: now,
     updatedAt: now,
   };
-  upsert(db, node);
+  db.transaction(() => {
+    const normalized = validateProviderNode(node, db.all("SELECT * FROM providerNodes").map(rowToNode));
+    Object.assign(node, normalized);
+    upsert(db, node);
+  });
   return node;
 }
 
@@ -75,7 +80,7 @@ export async function updateProviderNode(id, data) {
   db.transaction(() => {
     const row = db.get(`SELECT * FROM providerNodes WHERE id = ?`, [id]);
     if (!row) return;
-    const merged = { ...rowToNode(row), ...data, updatedAt: new Date().toISOString() };
+    const merged = validateProviderNode({ ...rowToNode(row), ...data, updatedAt: new Date().toISOString() }, db.all("SELECT * FROM providerNodes").map(rowToNode), id);
     upsert(db, merged);
     result = merged;
   });

@@ -45,7 +45,7 @@ describe("pingModelByKind reasoning models (#3010)", () => {
     expect(body.max_tokens).toBe(1024);
   });
 
-  it("treats a reasoning-only (length-limited) response as ok:true", async () => {
+  it("distinguishes accepted reasoning from a usable answer", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({
         choices: [
@@ -58,7 +58,9 @@ describe("pingModelByKind reasoning models (#3010)", () => {
     );
 
     const result = await pingModelByKind("cline-pass/kimi-k3", "llm", "http://127.0.0.1:20127");
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.connectionAccepted).toBe(true);
+    expect(result.verification).toBe("reasoning_only");
     expect(result.note).toMatch(/reasoning-only/);
   });
 
@@ -73,5 +75,15 @@ describe("pingModelByKind reasoning models (#3010)", () => {
     fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: "Hello!" } }] }));
     const result = await pingModelByKind("openai/gpt-4o", "llm", "http://127.0.0.1:20127");
     expect(result.ok).toBe(true);
+    expect(result.verification).toBe("usable_response");
+  });
+  it.each([null, "", "   ", {}, [], [{ type: "image_url", image_url: { url: "https://example.com" } }]])("does not pass empty or non-text content %j", async (content) => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content } }] }));
+    const result = await pingModelByKind("some/model", "llm");
+    expect(result).toMatchObject({ ok: false, connectionAccepted: true, verification: "connection_accepted" });
+  });
+  it("accepts text content blocks", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: [{ type: "text", text: "Hello" }] } }] }));
+    expect(await pingModelByKind("some/model", "llm")).toMatchObject({ ok: true, verification: "usable_response" });
   });
 });

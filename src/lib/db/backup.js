@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { BACKUPS_DIR, ensureDirs } from "./paths.js";
 import { timestampSlug, getAppVersion } from "./version.js";
+import { atomicWriteFile } from "./atomicFile.js";
 
 const KEEP_BACKUPS = 3;
 
@@ -38,6 +39,15 @@ export function backupFile(srcPath, destDir, destName = null) {
 // observability log, so the backup stays small regardless of DB size.
 export function backupDbLite(adapter, destDir, destName = "data.sqlite") {
   const dest = path.join(destDir, destName);
+  if (adapter.driver === "sql.js") {
+    const copy = new adapter.raw.constructor(adapter.raw.export());
+    try {
+      for (const table of BACKUP_EXCLUDE_TABLES) copy.exec(`DROP TABLE IF EXISTS "${table}"`);
+      atomicWriteFile(dest, Buffer.from(copy.export()));
+    } finally { copy.close(); }
+    if (!fs.existsSync(dest) || fs.statSync(dest).size === 0) throw new Error("SQL.js backup was not written");
+    return dest;
+  }
   try { fs.rmSync(dest, { force: true }); } catch {}
   const escaped = dest.replace(/'/g, "''");
 
@@ -59,6 +69,7 @@ export function backupDbLite(adapter, destDir, destName = "data.sqlite") {
   } finally {
     try { adapter.exec("DETACH DATABASE bak"); } catch {}
   }
+  if (!fs.existsSync(dest) || fs.statSync(dest).size === 0) throw new Error("Database backup was not written");
   return dest;
 }
 

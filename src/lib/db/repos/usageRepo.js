@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { createHash } from "node:crypto";
 import { getAdapter } from "../driver.js";
 import { parseJson, stringifyJson } from "../helpers/jsonCol.js";
 import { getMeta, setMeta } from "../helpers/metaStore.js";
@@ -69,6 +70,7 @@ function aggregateEntryToDay(day, entry) {
   const vals = { promptTokens, completionTokens, cachedTokens, cost };
 
   day.requests = (day.requests || 0) + 1;
+  day.unknownCostRequests = (day.unknownCostRequests || 0) + (entry.costStatus === "unknown" ? 1 : 0);
   day.promptTokens = (day.promptTokens || 0) + promptTokens;
   day.completionTokens = (day.completionTokens || 0) + completionTokens;
   day.cachedTokens = (day.cachedTokens || 0) + cachedTokens;
@@ -123,7 +125,7 @@ async function ensureRingInitialized() {
   recentRing.initialized = true;
   try {
     const db = await getAdapter();
-    const rows = db.all(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens FROM usageHistory ORDER BY id DESC LIMIT ?`, [RING_CAP]);
+    const rows = db.all(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens, meta FROM usageHistory ORDER BY id DESC LIMIT ?`, [RING_CAP]);
     recentRing.items = rows.reverse().map((r) => ({
       timestamp: r.timestamp, provider: r.provider, model: r.model, connectionId: r.connectionId,
       apiKey: r.apiKey, endpoint: r.endpoint, cost: r.cost, status: r.status,
@@ -137,7 +139,7 @@ async function calculateCost(provider, model, tokens) {
   try {
     const { getPricingForModel } = await import("./pricingRepo.js");
     const pricing = await getPricingForModel(provider, model);
-    if (!pricing) return 0;
+    if (!pricing) return null;
 
     // Delegate the actual math to the single source of truth (avoids the two
     // copies drifting apart — see open-sse/providers/pricing.js for the
@@ -146,7 +148,7 @@ async function calculateCost(provider, model, tokens) {
     return calculateCostFromTokens(tokens, pricing);
   } catch (e) {
     console.error("Error calculating cost:", e);
-    return 0;
+    return null;
   }
 }
 
@@ -180,6 +182,7 @@ export function trackPendingRequest(model, provider, connectionId, started, erro
       }
       scheduleStatsEvent("pending");
     }, PENDING_TIMEOUT_MS);
+    pendingTimers[timerKey]?.unref?.();
   } else {
     clearTimeout(pendingTimers[timerKey]);
     delete pendingTimers[timerKey];
@@ -245,6 +248,11 @@ export async function saveRequestUsage(entry) {
 
     if (!entry.timestamp) entry.timestamp = new Date().toISOString();
     entry.cost = await calculateCost(entry.provider, entry.model, entry.tokens);
+    entry.costStatus = entry.cost === null ? "unknown" : "estimated";
+    if (entry.budgetReservationId) {
+      const { settleSpend } = await import("./spendControl");
+      await settleSpend(entry.budgetReservationId, entry.tokens);
+    }
 
     const tokens = entry.tokens || {};
     const promptTokens = tokens.prompt_tokens || tokens.input_tokens || 0;
@@ -255,28 +263,13 @@ export async function saveRequestUsage(entry) {
     // All 3 writes (history insert, daily upsert, lifetime counter) in ONE transaction.
     // better-sqlite3 is sync → no JS yield mid-transaction → no race in same process.
     db.transaction(() => {
-      const existing = db.get(
-        `SELECT id, endpoint FROM usageHistory
-         WHERE timestamp = ?
-           AND COALESCE(provider, '') = COALESCE(?, '')
-           AND COALESCE(model, '') = COALESCE(?, '')
-           AND COALESCE(connectionId, '') = COALESCE(?, '')
-           AND COALESCE(apiKey, '') = COALESCE(?, '')
-           AND promptTokens = ?
-           AND completionTokens = ?
-         ORDER BY id DESC LIMIT 1`,
-        [
-          entry.timestamp, entry.provider || null, entry.model || null,
-          entry.connectionId || null, entry.apiKey || null,
-          promptTokens, completionTokens,
-        ]
-      );
-
-      if (existing) {
-        if (!existing.endpoint && entry.endpoint) {
-          db.run(`UPDATE usageHistory SET endpoint = ? WHERE id = ?`, [entry.endpoint, existing.id]);
-        }
-        return;
+      // Time and token counts are not request identities: concurrent identical
+      // requests must each count. Only an explicit completion event is deduped.
+      if (entry.requestId) {
+        if (db.get("SELECT key FROM kv WHERE scope = ? AND key = ?", ["usageEvents", entry.requestId])) return;
+        db.run("INSERT INTO kv(scope,key,value) VALUES(?,?,?)", ["usageEvents", entry.requestId, entry.timestamp]);
+        const count = db.get("SELECT COUNT(*) AS n FROM kv WHERE scope = ?", ["usageEvents"]);
+        if (count.n > 10000) db.run("DELETE FROM kv WHERE scope = ? AND key IN (SELECT key FROM kv WHERE scope = ? ORDER BY value ASC LIMIT ?)", ["usageEvents", "usageEvents", count.n - 10000]);
       }
 
       db.run(
@@ -285,7 +278,7 @@ export async function saveRequestUsage(entry) {
           entry.timestamp, entry.provider || null, entry.model || null,
           entry.connectionId || null, entry.apiKey || null, entry.endpoint || null,
           promptTokens, completionTokens, entry.cost || 0, entry.status || "ok",
-          stringifyJson(tokens), stringifyJson({}),
+          stringifyJson(tokens), stringifyJson({ costStatus: entry.costStatus, requestId: entry.requestId }),
         ]
       );
 
@@ -325,12 +318,12 @@ export async function getUsageHistory(filter = {}) {
   if (filter.endDate) { conds.push("timestamp <= ?"); params.push(new Date(filter.endDate).toISOString()); }
 
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
-  const rows = db.all(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens FROM usageHistory ${where} ORDER BY id ASC`, params);
+  const rows = db.all(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, cost, status, tokens, meta FROM usageHistory ${where} ORDER BY id ASC`, params);
 
   return rows.map((r) => ({
     timestamp: r.timestamp, provider: r.provider, model: r.model,
     connectionId: r.connectionId, apiKeyMasked: maskApiKey(r.apiKey), endpoint: r.endpoint,
-    cost: r.cost, status: r.status, tokens: parseJson(r.tokens, {}),
+    cost: parseJson(r.meta, {}).costStatus === "unknown" ? null : r.cost, costStatus: parseJson(r.meta, {}).costStatus || "legacy-estimate", status: r.status, tokens: parseJson(r.tokens, {}),
   }));
 }
 
@@ -394,6 +387,7 @@ export async function getUsageStats(period = "all") {
     .slice(0, 20);
 
   const stats = {
+    unknownCostRequests: 0,
     totalRequests: 0,
     totalPromptTokens: 0, totalCompletionTokens: 0, totalCachedTokens: 0, totalCost: 0,
     byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
@@ -458,6 +452,7 @@ export async function getUsageStats(period = "all") {
       stats.totalCompletionTokens += day.completionTokens || 0;
       stats.totalCachedTokens += day.cachedTokens || 0;
       stats.totalCost += day.cost || 0;
+      stats.unknownCostRequests += day.unknownCostRequests || 0;
 
       for (const [prov, p] of Object.entries(day.byProvider || {})) {
         if (!stats.byProvider[prov]) stats.byProvider[prov] = { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0 };
@@ -582,16 +577,17 @@ export async function getUsageStats(period = "all") {
       cutoff = new Date(Date.now() - PERIOD_MS["24h"]).toISOString();
     }
     const filtered = db.all(
-      `SELECT timestamp, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, cost, tokens FROM usageHistory WHERE timestamp >= ?`,
+      `SELECT timestamp, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, cost, tokens, meta FROM usageHistory WHERE timestamp >= ?`,
       [cutoff]
     );
 
     for (const r of filtered) {
       const tokens = parseJson(r.tokens, {}) || {};
-      const promptTokens = tokens.prompt_tokens || 0;
-      const completionTokens = tokens.completion_tokens || 0;
+      const promptTokens = r.promptTokens ?? tokens.prompt_tokens ?? tokens.input_tokens ?? 0;
+      const completionTokens = r.completionTokens ?? tokens.completion_tokens ?? tokens.output_tokens ?? 0;
       const cachedTokens = tokens.cached_tokens || tokens.cache_read_input_tokens || 0;
       const entryCost = r.cost || 0;
+      stats.unknownCostRequests += parseJson(r.meta, {}).costStatus === "unknown" ? 1 : 0;
       const providerDisplayName = providerNodeNameMap[r.provider] || r.provider;
 
       stats.totalPromptTokens += promptTokens;
@@ -665,6 +661,7 @@ export async function getUsageStats(period = "all") {
   }
 
   stats.totalRequests = Object.values(stats.byProvider).reduce((sum, p) => sum + (p.requests || 0), 0);
+  stats.byApiKey = Object.fromEntries(Object.entries(stats.byApiKey).map(([key, value]) => [createHash("sha256").update(key).digest("hex").slice(0, 24), value]));
   return stats;
 }
 

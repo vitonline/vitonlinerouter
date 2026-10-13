@@ -32,7 +32,8 @@ async function tryFetch(url, init, timeoutMs) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...init, headers: sanitizeHeaders(init.headers), signal: ctrl.signal });
+    // Provider endpoint redirects are unnecessary; never follow one into the LAN.
+    const res = await fetch(url, { ...init, headers: sanitizeHeaders(init.headers), signal: ctrl.signal, redirect: "error" });
     return { ok: true, res };
   } catch (err) {
     const isAbort = err?.name === "AbortError";

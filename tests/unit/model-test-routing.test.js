@@ -13,6 +13,12 @@ vi.mock("@/shared/utils/machineId", () => ({
   getConsistentMachineId: mocks.getConsistentMachineId,
 }));
 
+vi.mock("@/lib/db/repos/modelTestsRepo", () => ({
+  getModelTests: vi.fn(async () => ({})),
+  saveModelTest: vi.fn(async (_model, _kind, result) => result),
+}));
+vi.mock("@/lib/db/repos/nodesRepo", () => ({ getProviderNodes: vi.fn(async () => []) }));
+
 vi.mock("next/server", () => ({
   NextResponse: {
     json(body, init = {}) {
@@ -27,6 +33,22 @@ vi.mock("next/server", () => ({
 const originalFetch = global.fetch;
 
 describe("model test route kind routing", () => {
+  it("tests speech using the audio endpoint and requires actual audio", async () => {
+    const { POST } = await import("../../src/app/api/models/test/route.js");
+    global.fetch = vi.fn().mockResolvedValue(new Response(new Uint8Array([1,2,3]), {headers:{"Content-Type":"audio/mpeg"}}));
+    const request=()=>new Request("http://localhost/api/models/test", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"edge-tts/en-US-AriaNeural",kind:"tts"})});
+    expect((await (await POST(request())).json()).ok).toBe(true);
+    expect(global.fetch.mock.calls[0][0]).toContain("/api/v1/audio/speech");
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({model:"edge-tts/en-US-AriaNeural",input:"Test"});
+    global.fetch.mockResolvedValue(new Response("{}", {headers:{"Content-Type":"application/json"}}));
+    expect((await (await POST(request())).json()).ok).toBe(false);
+  });
+  it("does not send unsupported media types to chat", async () => {
+    const { POST } = await import("../../src/app/api/models/test/route.js");
+    const res=await POST(new Request("http://localhost/api/models/test",{method:"POST",body:JSON.stringify({model:"provider/video",kind:"video"})}));
+    expect(res.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getApiKeys.mockResolvedValue([{ key: "sk-internal", isActive: true }]);

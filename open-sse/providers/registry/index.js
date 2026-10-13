@@ -130,6 +130,18 @@ import p126 from "./dahl.js";
 import p127 from "./atria.js";
 import p129 from "./agnes.js";
 import p130 from "./bai.js";
+import p131 from "./xkiro.js";
+import p132 from "./apinex.js";
+import p133 from "./apmix.js";
+import p134 from "./modelrouter.js";
+import p135 from "./zenmux.js";
+import p136 from "./excelnt.js";
+import p137 from "./unorouter.js";
+import p138 from "./teamorouter.js";
+import p139 from "./experientiallabs.js";
+import p141 from "./qwencloud.js";
+import p142 from "./lebang.js";
+import p143 from "./intern.js";
 export default [
   p0,
   p1,
@@ -260,4 +272,16 @@ export default [
   p127,
   p129,
   p130,
+  p131,
+  p132,
+  p133,
+  p134,
+  p135,
+  p136,
+  p137,
+  p138,
+  p139,
+  p141,
+  p142,
+  p143,
 ];

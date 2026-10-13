@@ -62,7 +62,7 @@ describe("free-only provider policy", () => {
   });
 
   it("allows free, free-tier and hasFree providers", () => {
-    for (const id of ["kiro", "opencode", "openrouter", "groq", "ollama-local"]) {
+    for (const id of ["kiro", "opencode", "openrouter", "groq", "ollama-local", "xkiro"]) {
       expect(policy.isProviderAllowed(id), id).toBe(true);
     }
   });
@@ -85,12 +85,12 @@ describe("free-only provider policy", () => {
     expect(policy.isProviderAllowed("anthropic-compatible-abc")).toBe(brand.PROVIDER_POLICY.customEndpoints);
   });
 
-  it("exposes only free entries in ALLOWED_REGISTRY", () => {
-    const { categories } = brand.PROVIDER_POLICY;
+  it("exposes free entries and explicitly included providers in ALLOWED_REGISTRY", () => {
+    const { categories, include } = brand.PROVIDER_POLICY;
     expect(policy.ALLOWED_REGISTRY.length).toBeGreaterThan(0);
     expect(policy.ALLOWED_REGISTRY.length).toBeLessThan(registry.length);
     for (const entry of policy.ALLOWED_REGISTRY) {
-      expect(categories.includes(entry.category) || entry.hasFree === true, entry.id).toBe(true);
+      expect(include.includes(entry.id) || categories.includes(entry.category) || entry.hasFree === true, entry.id).toBe(true);
     }
   });
 

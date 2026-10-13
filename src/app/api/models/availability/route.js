@@ -76,15 +76,19 @@ export async function POST(request) {
 
     await Promise.all(
       connections
-        .filter((connection) => connection[lockKey])
+        .filter((connection) => model === "__all" || connection[lockKey])
         .map((connection) =>
           updateProviderConnection(connection.id, {
-            [lockKey]: null,
+            ...(model === "__all"
+              ? Object.fromEntries(Object.keys(connection).filter((key) => key.startsWith(MODEL_LOCK_PREFIX)).map((key) => [key, null]))
+              : { [lockKey]: null }),
+            rateLimitedUntil: null,
+            errorCode: null,
+            testStatus: "unknown",
+            verificationNeeded: true,
+            cooldownClearedAt: new Date().toISOString(),
             ...(connection.testStatus === "unavailable"
               ? {
-                  testStatus: "active",
-                  lastError: null,
-                  lastErrorAt: null,
                   backoffLevel: 0,
                 }
               : {}),

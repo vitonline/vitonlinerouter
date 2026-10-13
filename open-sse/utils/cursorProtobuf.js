@@ -676,26 +676,29 @@ export function generateToolResultBody(toolResult) {
 
 export function decodeVarint(buffer, offset) {
   let result = 0;
-  let shift = 0;
+  let multiplier = 1;
   let pos = offset;
 
   while (pos < buffer.length) {
     const b = buffer[pos];
-    result |= (b & 0x7F) << shift;
+    result += (b & 0x7F) * multiplier;
     pos++;
-    if (!(b & 0x80)) break;
-    shift += 7;
+    if (!Number.isSafeInteger(result)) throw new Error("Unsafe protobuf varint");
+    if (!(b & 0x80)) return [result, pos];
+    multiplier *= 128;
+    if (pos - offset >= 10) throw new Error("Oversized protobuf varint");
   }
 
-  return [result, pos];
+  throw new Error("Truncated protobuf varint");
 }
 
 export function decodeField(buffer, offset) {
   if (offset >= buffer.length) return [null, null, null, offset];
 
   const [tag, pos1] = decodeVarint(buffer, offset);
-  const fieldNum = tag >> 3;
+  const fieldNum = Math.floor(tag / 8);
   const wireType = tag & 0x07;
+  if (tag > 0xffffffff || fieldNum <= 0) throw new Error("Invalid protobuf tag");
 
   let value;
   let pos = pos1;
@@ -704,16 +707,19 @@ export function decodeField(buffer, offset) {
     [value, pos] = decodeVarint(buffer, pos);
   } else if (wireType === WIRE_TYPE.LEN) {
     const [length, pos2] = decodeVarint(buffer, pos);
+    if (length > buffer.length - pos2) throw new Error("Truncated protobuf field");
     value = buffer.slice(pos2, pos2 + length);
     pos = pos2 + length;
   } else if (wireType === WIRE_TYPE.FIXED64) {
+    if (buffer.length - pos < 8) throw new Error("Truncated fixed64 field");
     value = buffer.slice(pos, pos + 8);
     pos += 8;
   } else if (wireType === WIRE_TYPE.FIXED32) {
+    if (buffer.length - pos < 4) throw new Error("Truncated fixed32 field");
     value = buffer.slice(pos, pos + 4);
     pos += 4;
   } else {
-    value = null;
+    throw new Error("Unsupported protobuf wire type");
   }
 
   return [fieldNum, wireType, value, pos];
@@ -725,6 +731,7 @@ export function decodeMessage(data) {
 
   while (pos < data.length) {
     const [fieldNum, wireType, value, newPos] = decodeField(data, pos);
+    if (newPos <= pos) throw new Error("Non-progressing protobuf field");
     if (fieldNum === null) break;
 
     if (!fields.has(fieldNum)) fields.set(fieldNum, []);
@@ -929,8 +936,8 @@ const MER_MESSAGE = 1;
 const TNF_NAME = 1;
 
 function asBytes(value) {
-  if (!value) return Buffer.alloc(0);
-  return Buffer.isBuffer(value) ? value : Buffer.from(value);
+  if (Buffer.isBuffer(value)) return value;
+  return value instanceof Uint8Array ? Buffer.from(value) : Buffer.alloc(0);
 }
 
 /**

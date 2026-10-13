@@ -109,11 +109,11 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [modelLockUntil]);
+  }, [connection, modelLockUntil]);
 
   // Determine effective status (override unavailable if cooldown expired)
   const effectiveStatus = (connection.testStatus === "unavailable" && !isCooldown)
-    ? "active"  // Cooldown expired u2192 treat as active
+    ? "unknown"  // Expiry permits retry; it does not prove access.
     : connection.testStatus;
 
   const getStatusVariant = () => getConnectionStatusVariant(connection.isActive, effectiveStatus);
@@ -165,7 +165,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
           )}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
             <Badge variant={getStatusVariant()} size="sm" dot>
-              {connection.isActive === false ? "disabled" : (effectiveStatus || "Unknown")}
+              {connection.isActive === false ? "disabled" : connection.verificationNeeded || (connection.testStatus === "unavailable" && !isCooldown) ? "Verification needed" : (effectiveStatus || "Unknown")}
             </Badge>
             <Badge variant="default" size="sm">
               {authLabel}

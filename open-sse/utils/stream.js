@@ -5,6 +5,7 @@ import { extractUsage, mergeUsage, hasValidUsage, estimateUsage, logUsage, addBu
 import { parseSSELine, hasValuableContent, fixInvalidId, formatSSE } from "./streamHelpers.js";
 import { getOpenAIResponsesEventName, isOpenAIResponsesTerminalEvent, formatIncompleteOpenAIResponsesStreamFailure } from "./responsesStreamHelpers.js";
 import { dbg, isDebugEnabled } from "./debugLog.js";
+import { flattenResponsesTools } from "../shared/responsesToolNamespaces.js";
 
 import { SSE_DONE, SSE_HEADERS, SSE_HEADERS_NO_BUFFER } from "./sseConstants.js";
 
@@ -60,7 +61,7 @@ export function createSSEStream(options = {}) {
   const decoder = new TextDecoder("utf-8", { fatal: false });
 
   const state = mode === STREAM_MODE.TRANSLATE
-    ? { ...initState(sourceFormat), provider, toolNameMap, customToolNames: new Set(customToolNames || []), model, sessionId: credentials?._clientSessionId || null,
+    ? { ...initState(sourceFormat), provider, toolNameMap, customToolNames: new Set(customToolNames || []), namespaceTools: flattenResponsesTools(body?.tools || []).namespaceByName, model, sessionId: credentials?._clientSessionId || null,
         // Which upstream format this stream came from. A response translator can be
         // reached either directly (target === its registered source) or as the second
         // hop of a pivot, and on the terminal null chunk the pivot drops it — so a
@@ -83,6 +84,13 @@ export function createSSEStream(options = {}) {
   let openAIResponsesDoneSent = false;
   let streamDoneSent = false;  // track duplicate [DONE] across transform + flush
   let finalized = false;
+  let meaningfulOutput = false;
+  let upstreamFailed = false;
+  const observe = (chunk) => {
+    if (chunk.error || chunk.type === "response.failed" || chunk.type === "error") upstreamFailed = true;
+    const delta = chunk.choices?.[0]?.delta;
+    if (delta?.content || delta?.reasoning_content || delta?.tool_calls?.length || chunk.delta?.text || chunk.delta?.thinking || chunk.delta?.partial_json || chunk.content_block?.type === "tool_use" || chunk.item?.type === "function_call" || chunk.type === "response.output_text.delta" || chunk.type === "response.function_call_arguments.delta" || chunk.candidates?.some(c => c.content?.parts?.length)) meaningfulOutput = true;
+  };
 
   // Usage/logging tail, callable from transform() as well as flush(): a client that
   // closes right after the terminal event cancels the reader, and flush() never runs.
@@ -101,13 +109,14 @@ export function createSSEStream(options = {}) {
     if (hasValidUsage(finalUsage)) {
       logUsage(isPassthrough ? provider : (state?.provider || targetFormat), finalUsage, model, connectionId, apiKey);
     } else {
-      appendRequestLog({ model, provider, connectionId, tokens: null, status: "200 OK" }).catch(() => { });
+      appendRequestLog({ model, provider, connectionId, tokens: null, status: upstreamFailed ? "failed" : meaningfulOutput ? "200 OK" : "empty" }).catch(() => { });
     }
 
     if (onStreamComplete) {
       onStreamComplete({
         content: accumulatedContent,
-        thinking: accumulatedThinking
+        thinking: accumulatedThinking,
+        status: upstreamFailed ? "failed" : meaningfulOutput || accumulatedContent || accumulatedThinking ? "success" : "empty"
       }, finalUsage, ttftAt);
     }
   };
@@ -146,6 +155,7 @@ export function createSSEStream(options = {}) {
           if (trimmed.startsWith("data:") && trimmed.slice(5).trim() !== "[DONE]") {
             try {
               const parsed = JSON.parse(trimmed.slice(5).trim());
+              observe(parsed);
 
               const idFixed = fixInvalidId(parsed);
 
@@ -232,6 +242,10 @@ export function createSSEStream(options = {}) {
           }
 
           if (!injectedUsage) {
+            if (trimmed === "data: [DONE]") {
+              if (streamDoneSent) continue;
+              streamDoneSent = true;
+            }
             if (line.startsWith("data:") && !line.startsWith("data: ")) {
               output = "data: " + line.slice(5) + "\n";
             } else {
@@ -251,6 +265,7 @@ export function createSSEStream(options = {}) {
 
         const parsed = parseSSELine(trimmed, targetFormat);
         if (!parsed) continue;
+        observe(parsed);
 
         // Responses API same-format passthrough: preserve event framing + track terminal state
         const isOpenAIResponsesStream = targetFormat === FORMATS.OPENAI_RESPONSES;
@@ -425,6 +440,7 @@ export function createSSEStream(options = {}) {
           // counts — so it has to go through.
           const isDoneSentinel = parsed?.done && targetFormat !== FORMATS.OLLAMA;
           if (parsed && !isDoneSentinel) {
+            observe(parsed);
             // Same accumulation the transform loop does, so finalizeStream() can
             // log a tail chunk's tokens instead of falling back to null.
             const extracted = extractUsage(parsed);
@@ -488,6 +504,7 @@ export function createSSEStream(options = {}) {
         finalizeStream();
       } catch (error) {
         console.log("Error in flush:", error);
+        upstreamFailed = true;
         finalizeStream();
       }
     }

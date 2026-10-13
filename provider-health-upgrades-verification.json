@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-12T11:26:56.776Z",
+  "checks": [
+    {
+      "name": "reserved prefix",
+      "status": 400,
+      "error": "That model prefix is reserved for an existing provider."
+    },
+    {
+      "name": "unsafe URL scheme",
+      "status": 400,
+      "error": "Use an HTTP or HTTPS URL without credentials, query parameters, or a fragment."
+    },
+    {
+      "name": "malformed name",
+      "status": 400,
+      "error": "Name is required"
+    },
+    {
+      "name": "models/test",
+      "status": 200
+    },
+    {
+      "name": "providers/issues",
+      "status": 200
+    },
+    {
+      "name": "provider-nodes",
+      "status": 200
+    }
+  ]
+}

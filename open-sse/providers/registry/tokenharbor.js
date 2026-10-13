@@ -19,6 +19,7 @@ export default {
     },
   },
   category: "apikey",
+  hasFree: true,
   authType: "apikey",
   transport: {
     // OpenAI-compatible. `format` is left at the shared "openai" default and

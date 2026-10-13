@@ -243,6 +243,11 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
  */
 export async function markAccountUnavailable(connectionId, status, errorText, provider = null, model = null, resetsAtMs = null) {
   if (!connectionId || connectionId === "noauth") return { shouldFallback: false, cooldownMs: 0 };
+  // Generic upstream outages are not evidence that this customer's credential is bad.
+  // Preserve explicit provider quota/reset and capacity errors for their own handling.
+  if (status >= 500 && !resetsAtMs && !/quota|credit|plan|capacity|usage.limit|rate.limit/i.test(errorText || "")) {
+    return { shouldFallback: true, cooldownMs: 0 };
+  }
   const connections = await getProviderConnections({ provider });
   const conn = connections.find(c => c.id === connectionId);
   const backoffLevel = conn?.backoffLevel || 0;
@@ -274,6 +279,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   await updateProviderConnection(connectionId, {
     ...lockUpdate,
     testStatus: "unavailable",
+    verificationNeeded: false,
     lastError: reason,
     errorCode: status,
     lastErrorAt: new Date().toISOString(),
@@ -316,7 +322,7 @@ export async function clearAccountError(connectionId, currentConnection, model =
     return expiry && new Date(expiry).getTime() <= now;   // expired
   });
 
-  if (keysToClear.length === 0 && conn.testStatus !== "unavailable" && !conn.lastError) return;
+  if (keysToClear.length === 0 && conn.testStatus !== "unavailable" && !conn.lastError && !conn.verificationNeeded) return;
 
   // Check if any active locks remain after clearing
   const remainingActiveLocks = allLockKeys.filter(k => {
@@ -357,7 +363,7 @@ export function extractApiKey(request) {
     return xApiKey;
   }
 
-  return null;
+  return request.headers.get("x-goog-api-key") || new URL(request.url).searchParams.get("key") || null;
 }
 
 /**

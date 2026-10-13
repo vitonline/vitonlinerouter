@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const dir = path.join(process.env.APPDATA, 'flagshiprouter');
+const token = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'machine-id'), 'utf8').trim() + 'fr-cli-auth' + fs.readFileSync(path.join(dir, 'auth/cli-secret'), 'utf8').trim()).digest('hex').slice(0, 16);
+const url = 'http://127.0.0.1:20128/api/models/health-checks';
+const headers = { 'x-fr-cli-token': token, 'Content-Type': 'application/json' };
+const beforeResponse = await fetch(url, { headers });
+assert.equal(beforeResponse.status, 200);
+const before = await beforeResponse.json();
+const invalid = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ ...before.config, requestsPerHour: 10000 }) });
+assert.equal(invalid.status, 400);
+const after = await (await fetch(url, { headers })).json();
+assert.deepEqual(after.config, before.config);
+const unauthorized = await fetch(url, { redirect: 'manual' });
+assert.ok(unauthorized.status === 401 || unauthorized.status === 307);
+console.log(JSON.stringify({ scheduleLoaded: true, invalidBudgetRejected: true, configPreserved: true, authenticationRequired: true, enabled: after.config.enabled }));

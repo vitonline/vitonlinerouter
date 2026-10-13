@@ -1,4 +1,5 @@
 import { BaseExecutor } from "./base.js";
+import { readWithTimeout } from "../utils/readWithTimeout.js";
 import { CODEX_DEFAULT_INSTRUCTIONS } from "../config/codexInstructions.js";
 import { PROVIDERS } from "../config/providers.js";
 import {
@@ -238,9 +239,9 @@ export class CodexExecutor extends BaseExecutor {
     return headers;
   }
 
-  buildUrl(model, stream, urlIndex = 0, credentials = null) {
+  buildUrl(model, stream, urlIndex = 0, credentials = null, body = null) {
     const base = super.buildUrl(model, stream, urlIndex, credentials);
-    return this._isCompact ? `${base}/compact` : base;
+    return body?._compact ? `${base}/compact` : base;
   }
 
   async refreshCredentials(credentials, log) {
@@ -335,7 +336,7 @@ export class CodexExecutor extends BaseExecutor {
     let accountFallback = false;
     try {
       while (text.length < CODEX_SSE_PEEK_BYTES) {
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithTimeout(reader);
         if (done) break;
         chunks.push(value);
         text += decoder.decode(value, { stream: true });
@@ -410,7 +411,6 @@ export class CodexExecutor extends BaseExecutor {
    * Image fetching is handled separately in prefetchImages() so this stays sync.
    */
   transformRequest(model, body, stream, credentials) {
-    this._isCompact = !!body._compact;
     delete body._compact;
     // Resolve conversation-stable session_id (priority: body → assistant-text → workspace → machine)
     this._currentSessionId = resolveCacheSessionId(body, credentials);

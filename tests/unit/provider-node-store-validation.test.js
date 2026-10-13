@@ -1,0 +1,25 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, expect, it, vi } from "vitest";
+import { createSqlJsAdapter } from "../../src/lib/db/adapters/sqlJsAdapter.js";
+const state = vi.hoisted(() => ({ db: null }));
+vi.mock("../../src/lib/db/driver.js", () => ({ getAdapter: async () => state.db }));
+import { createProviderNode, updateProviderNode, getProviderNodes } from "../../src/lib/db/repos/nodesRepo.js";
+let directory;
+afterEach(() => { state.db?.close(); state.db = null; if (directory) fs.rmSync(directory, { recursive: true, force: true }); });
+it("atomically refuses duplicate prefixes and rolls back invalid endpoint edits", async () => {
+  directory = fs.mkdtempSync(path.join(os.tmpdir(), "provider-node-validation-"));
+  state.db = await createSqlJsAdapter(path.join(directory, "nodes.sqlite"));
+  state.db.exec("CREATE TABLE providerNodes(id TEXT PRIMARY KEY, type TEXT, name TEXT, data TEXT, createdAt TEXT, updatedAt TEXT)");
+  const input = { type: "openai-compatible", apiType: "chat", name: "Local test", prefix: "local-test", baseUrl: "http://127.0.0.1:8080/v1/chat/completions" };
+  const outcomes = await Promise.allSettled([createProviderNode(input), createProviderNode(input)]);
+  expect(outcomes.filter(result => result.status === "fulfilled")).toHaveLength(1);
+  expect(outcomes.find(result => result.status === "rejected").reason.status).toBe(409);
+  const [node] = await getProviderNodes();
+  expect(node.baseUrl).toBe("http://127.0.0.1:8080/v1");
+  await expect(updateProviderNode(node.id, { prefix: "qw" })).rejects.toMatchObject({ status: 400 });
+  await expect(updateProviderNode(node.id, { baseUrl: "file:///secret" })).rejects.toMatchObject({ status: 400 });
+  expect((await getProviderNodes())[0]).toMatchObject({ prefix: "local-test", baseUrl: "http://127.0.0.1:8080/v1" });
+  expect(await updateProviderNode(node.id, { name: "Renamed" })).toMatchObject({ name: "Renamed" });
+});

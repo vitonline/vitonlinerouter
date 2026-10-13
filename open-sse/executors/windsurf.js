@@ -1,4 +1,5 @@
 import { BaseExecutor } from "./base.js";
+import { readWithTimeout } from "../utils/readWithTimeout.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { PROVIDERS } from "../config/providers.js";
 import { randomUUID } from "node:crypto";
@@ -224,14 +225,17 @@ export function grpcWebFrame(payload) {
 
 function readVarint(buf, offset) {
   let result = 0;
-  let shift = 0;
+  let multiplier = 1;
+  const start = offset;
   while (offset < buf.length) {
     const b = buf[offset++];
-    result |= (b & 0x7f) << shift;
-    if ((b & 0x80) === 0) break;
-    shift += 7;
+    result += (b & 0x7f) * multiplier;
+    if (!Number.isSafeInteger(result)) throw new Error("Unsafe Windsurf varint");
+    if ((b & 0x80) === 0) return [result, offset];
+    if (offset - start >= 10) throw new Error("Oversized Windsurf varint");
+    multiplier *= 128;
   }
-  return [result >>> 0, offset];
+  throw new Error("Truncated Windsurf varint");
 }
 
 function decodeStringField(buf, targetField) {
@@ -511,7 +515,7 @@ export class WindsurfExecutor extends BaseExecutor {
           if (reader) {
             try {
               while (true) {
-                const { done, value } = await reader.read();
+                const { done, value } = await readWithTimeout(reader);
                 if (done) break;
                 if (!value) continue;
                 pending = pending.length === 0 ? value : concatBytes([pending, value]);

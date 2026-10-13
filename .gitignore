@@ -87,6 +87,9 @@ graphify-out/*
 .PR/
 .next-analyze/*
 
+# Agent session data (local tooling, not product code)
+.workbuddy-ai/
+
 # Kiro local workspace state
 .kiro/
 flagshiprouter-*
@@ -102,3 +105,4 @@ flagshiprouter-*
 .start-dev.ps1
 start-dev-silent.cjs
 debug.log
+.pilot-verification/

@@ -64,7 +64,7 @@ describe("custom-server peer header sanitizing", () => {
     const headers = await get({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" });
 
     expect(headers["x-fr-via-proxy"]).toBe("1");
-    expect(headers["x-fr-real-ip"]).toBe("203.0.113.9");
+    expect(headers["x-fr-real-ip"]).toBe("10.0.0.1");
     expect(headers["x-forwarded-for"]).toBeUndefined();
   });
 

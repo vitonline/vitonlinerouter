@@ -16,7 +16,7 @@ vi.mock("@/shared/constants/providers.js", () => ({
 }));
 vi.mock("@/sse/utils/logger.js", () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn() }));
 
-const { markAccountUnavailable } = await import("../../src/sse/services/auth.js");
+const { markAccountUnavailable, clearAccountError } = await import("../../src/sse/services/auth.js");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -29,6 +29,11 @@ beforeEach(() => {
 });
 
 describe("GitHub monthly usage exhaustion", () => {
+  it("updates a pending cooldown verification after a successful request even without old locks", async () => {
+    await clearAccountError("github-a", { testStatus: "unknown", verificationNeeded: true }, "model-a");
+    expect(dbMocks.updateProviderConnection).toHaveBeenCalledWith("github-a", expect.objectContaining({ testStatus: "active" }));
+  });
+
   it("locks the whole account until the next UTC month", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-04T19:30:00.000Z"));
@@ -47,6 +52,7 @@ describe("GitHub monthly usage exhaustion", () => {
         expect.objectContaining({
           modelLock___all: "2026-09-01T00:00:00.000Z",
           testStatus: "unavailable",
+          verificationNeeded: false,
           errorCode: 402,
           backoffLevel: 0,
         }),

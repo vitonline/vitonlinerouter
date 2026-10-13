@@ -1,0 +1,94 @@
+{
+  "at": "2026-10-12T21:51:04.086Z",
+  "models": [
+    "intern/qwen3.8-27b",
+    "intern/deepseek-v4-flash-0731",
+    "intern/glm-5.3"
+  ],
+  "results": [
+    {
+      "model": "intern/qwen3.8-27b",
+      "capability": "text",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 2484
+    },
+    {
+      "model": "intern/qwen3.8-27b",
+      "capability": "streaming",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 938
+    },
+    {
+      "model": "intern/qwen3.8-27b",
+      "capability": "tools",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 775
+    },
+    {
+      "model": "intern/qwen3.8-27b",
+      "capability": "json",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 905
+    },
+    {
+      "model": "intern/deepseek-v4-flash-0731",
+      "capability": "text",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 5820
+    },
+    {
+      "model": "intern/deepseek-v4-flash-0731",
+      "capability": "streaming",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1667
+    },
+    {
+      "model": "intern/deepseek-v4-flash-0731",
+      "capability": "tools",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1247
+    },
+    {
+      "model": "intern/deepseek-v4-flash-0731",
+      "capability": "json",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 647
+    },
+    {
+      "model": "intern/glm-5.3",
+      "capability": "text",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1875
+    },
+    {
+      "model": "intern/glm-5.3",
+      "capability": "streaming",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1075
+    },
+    {
+      "model": "intern/glm-5.3",
+      "capability": "tools",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1404
+    },
+    {
+      "model": "intern/glm-5.3",
+      "capability": "json",
+      "ok": true,
+      "reason": "Test passed",
+      "latencyMs": 1135
+    }
+  ]
+}

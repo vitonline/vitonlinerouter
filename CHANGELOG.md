@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `xkiro` provider (xkiro.com OpenAI-compatible gateway) with the free model
+  `qwen/qwen-plus-2025-07-28:free`. Key validation and connection tests probe
+  `chat/completions` because xkiro's `/v1/models` is public (HTTP 200 for any
+  key); usage is priced at $0 via the `:free` suffix rule.
+
 ## 1.0.0 — 2026-09-27
 
 First FlagshipRouter release.

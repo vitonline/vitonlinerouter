@@ -9,6 +9,12 @@ import BrandMark from "@/shared/components/BrandMark";
 import { SegmentedControl, CardSkeleton } from "@/shared/components";
 import { BRAND } from "open-sse/config/brand.js";
 import { cn } from "@/shared/utils/cn";
+import { modelTestResult, modelTestKey } from "@/shared/utils/modelTestResult";
+import { useModelTestHistory, notifyModelTestsChanged } from "@/shared/hooks/useModelTestHistory";
+import ModelTestHealth from "@/shared/components/ModelTestHealth";
+import ModelHealthSchedule from "@/shared/components/ModelHealthSchedule";
+import ProviderIssues from "@/shared/components/ProviderIssues";
+import RecommendedModels from "@/shared/components/RecommendedModels";
 
 const PAGE_SIZE = 60;
 
@@ -36,11 +42,11 @@ const KIND_LABELS = {
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
-  { value: "ready", label: "Ready now" },
+  { value: "ready", label: "Connected" },
   { value: "connect", label: "Needs connect" },
 ];
 
-const CATEGORY_LABELS = { free: "Free", freeTier: "Free tier", apikey: "Free tier" };
+const CATEGORY_LABELS = { free: "Free", freeTier: "Free tier available", apikey: "API key" };
 
 function Stat({ label, value, accent = false }) {
   return (
@@ -124,7 +130,7 @@ function ModelRow({ model, provider, copied, onCopy, test, onTest }) {
           <div className="min-w-0">
             <p className="truncate text-[13px] font-medium text-text-main">{provider?.name || model.providerId}</p>
             <p className="truncate text-[11px] text-text-subtle">
-              {CATEGORY_LABELS[provider?.category] || "Free"}
+              {CATEGORY_LABELS[provider?.category] || "Provider account"}
               {provider?.noAuth ? " · no signup" : ""}
             </p>
           </div>
@@ -150,19 +156,20 @@ function ModelRow({ model, provider, copied, onCopy, test, onTest }) {
             )}
             {test?.state === "done" ? (
               <span
-                title={test.error || undefined}
+                title={`${test.error || ""}${test.testedAt ? ` · Tested ${new Date(test.testedAt).toLocaleString()}` : ""}`}
                 className={cn(
-                  "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[12px] font-semibold",
+                  "inline-flex min-h-7 items-center gap-1 rounded-xl px-2.5 py-1 text-[12px] font-semibold",
                   test.ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400",
                 )}
               >
                 <span className="material-symbols-outlined text-[14px]">{test.ok ? "check_circle" : "error"}</span>
-                {test.ok ? `${test.latencyMs} ms` : "Failed"}
+                {test.ok ? `Last test passed${test.latencyMs != null ? ` · ${test.latencyMs} ms` : ""}` : test.reason}
+                {test.testedAt && <span className="text-[10px] font-normal">{new Date(test.testedAt).toLocaleString()}</span>}
               </span>
             ) : (
               <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
-                Ready
+                {model.source === "rename" ? "Available · untested" : "Connected · untested"}
               </span>
             )}
           </>
@@ -188,6 +195,7 @@ export default function ModelsPage() {
   const [providerFilter, setProviderFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [tests, setTests] = useState({});
+  const history = useModelTestHistory();
   const { copied, copy } = useCopyToClipboard(1500);
   const query = useHeaderSearchStore((s) => s.query);
 
@@ -268,9 +276,10 @@ export default function ModelsPage() {
         body: JSON.stringify({ model: model.id, kind: model.kind }),
       });
       const data = await res.json();
-      setTests((prev) => ({ ...prev, [model.id]: { state: "done", ok: !!data.ok, latencyMs: data.latencyMs, error: data.error } }));
+      setTests((prev) => ({ ...prev, [model.id]: { state: "done", ...modelTestResult(data) } }));
+      notifyModelTestsChanged();
     } catch (err) {
-      setTests((prev) => ({ ...prev, [model.id]: { state: "done", ok: false, error: err.message } }));
+      setTests((prev) => ({ ...prev, [model.id]: { state: "done", ...modelTestResult({ ok: false, error: `Network error: ${err.message}` }) } }));
     }
   }, []);
 
@@ -305,24 +314,31 @@ export default function ModelsPage() {
         <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-signal/20 blur-3xl" aria-hidden="true" />
         <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0 max-w-xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Free model catalog</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Model catalog</p>
+            <Link href="/dashboard/providers/new" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">add</span>Add provider
+            </Link>
             <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-text-main sm:text-[28px]">
-              {kindCounts.llm || 0} chat models. Zero cost.
+                {kindCounts.llm || 0} chat models across providers.
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
-              Every model {BRAND.name} routes to comes from a free or free-tier provider. Copy an ID into
-              your coding tool, or connect a provider once to unlock its models.
+              Access depends on your provider account, allowance, and selected model. Connect a provider
+              and test a model before copying its ID into your coding tool.
             </p>
           </div>
           <div className="grid shrink-0 grid-cols-3 gap-2.5 sm:w-[360px]">
             <Stat label="Models" value={catalog.models.length} />
-            <Stat label="Ready now" value={readyCount} accent />
+            <Stat label="Connected" value={readyCount} accent />
             <Stat label="Providers" value={freeProviderCount} />
           </div>
         </div>
       </section>
 
       {/* Toolbar */}
+      <RecommendedModels />
+      <ModelTestHealth results={history.results} error={history.error} onRefresh={history.refresh} />
+      <ModelHealthSchedule />
+      <ProviderIssues />
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <SegmentedControl
           size="sm"
@@ -341,7 +357,7 @@ export default function ModelsPage() {
             aria-label="Filter by provider"
             className="h-8 rounded-lg border border-border bg-surface px-2.5 text-xs font-medium text-text-main outline-none transition-colors hover:border-primary/40 focus:border-primary"
           >
-            <option value="all">All free providers</option>
+            <option value="all">All configured providers</option>
             {providerOptions.map((p) => (
               <option key={p.id} value={p.id}>{p.name} ({p.models})</option>
             ))}
@@ -371,7 +387,7 @@ export default function ModelsPage() {
                 provider={providersById[model.providerId]}
                 copied={copied}
                 onCopy={copy}
-                test={tests[model.id]}
+                test={tests[model.id] || history.results[modelTestKey(model.id)]}
                 onTest={handleTest}
               />
             ))}

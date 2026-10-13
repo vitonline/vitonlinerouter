@@ -107,6 +107,7 @@ export async function POST(request) {
       { status: 401 }
     );
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Dashboard login failed:", error);
+    return NextResponse.json({ error: "Login failed" }, { status: 500 });
   }
 }

@@ -701,10 +701,25 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       case "dahl":
       case "atria":
       case "agnes":
-      case "bai": {
+      case "bai":
+      case "qwencloud":
+      case "intern":
+      case "lebang": {
         const cfg = PROVIDERS[connection.provider];
         const res = await fetchWithConnectionProxy(cfg.validateUrl, { headers: { Authorization: `Bearer ${connection.apiKey}` } }, effectiveProxy);
         return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
+      }
+      case "xkiro": {
+        // xkiro's /v1/models answers 200 for any/no key (public catalogue),
+        // so only the chat endpoint can reject a bad key (401/403). Probe it
+        // with a single token on the free seed model (verified live).
+        const res = await fetchWithConnectionProxy("https://api.xkiro.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${connection.apiKey}` },
+          body: JSON.stringify({ model: getDefaultModel("xkiro") || getDefaultModel("xk"), messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }),
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
       }
       case "ollama": {
         const res = await fetch("https://ollama.com/api/tags", { headers: { Authorization: `Bearer ${connection.apiKey}` } });
@@ -891,6 +906,7 @@ export async function testSingleConnection(id) {
   const softWarning = result.valid && (result.warning || result.error);
   const updateData = {
     testStatus: result.valid ? "active" : "error",
+    verificationNeeded: false,
     lastError: result.valid ? (softWarning || null) : result.error,
     lastErrorAt: result.valid
       ? softWarning

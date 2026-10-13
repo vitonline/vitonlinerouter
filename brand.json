@@ -5,8 +5,8 @@
   "slug": "flagshiprouter",
   "modelPrefix": "flagshiprouter",
 
-  "tagline": "Free AI models for every coding tool",
-  "description": "A local AI gateway that connects Claude Code, Codex, Cursor, Cline, OpenCode and other coding tools to free AI models through one OpenAI-compatible endpoint.",
+  "tagline": "Reliable AI routing for your coding tools",
+  "description": "A self-hosted AI gateway for your own provider accounts, with tested model pools, bounded fallback, clear diagnostics and coding-tool integrations.",
 
   "repository": "https://github.com/theRizwan/FlagshipRouter",
   "branch": "main",
@@ -25,8 +25,8 @@
     "freeOnly": true,
     "categories": ["free", "freeTier"],
     "includeHasFree": true,
-    "include": [],
+    "include": ["apinex", "excelnt", "atria", "teamorouter", "experientiallabs", "huggingface", "bai", "qwencloud", "lebang", "intern"],
     "exclude": ["antigravity", "gemini", "gemini-cli"],
-    "customEndpoints": false
+    "customEndpoints": true
   }
 }

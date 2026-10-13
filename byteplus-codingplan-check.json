@@ -1,0 +1,170 @@
+{
+  "testedAt": "2026-10-12T09:42:22.622Z",
+  "scope": "One representative chat model per active configured provider; free alternatives on failure",
+  "results": [
+    {
+      "provider": "byteplus",
+      "tests": [
+        {
+          "model": "byteplus/ark-code-latest",
+          "kind": "llm",
+          "ok": false,
+          "reason": "Model incompatible with CodingPlan",
+          "error": "HTTP 503: [byteplus/ark-code-latest] [404]: {\"error\":{\"code\":\"UnsupportedModel\",\"message\":\"The requested model does not support the coding plan feature. Please refer to the documentation at https://docs.byteplus.com/en/docs/ModelArk/1925114 to select a compatible model. Request id: 021791798142182a81c77d48bc6ef475723297888da3516e4e473\",\"param\":\"\",\"type\":\"\"}} (reset after 2m)",
+          "status": 503,
+          "latencyMs": 981,
+          "testedAt": "2026-10-12T09:42:23.669Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "cloudflare-ai",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "edge-tts",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "fal-ai",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "google-tts",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "groq",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "huggingface",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "kiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "local-device",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "nanobanana",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "nvidia",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "ollama",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "opencode",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "openrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "vertex",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "api-airforce",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bazaarlink",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "kilo-gateway",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "poolside",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "tokenrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "selfhosted-stt",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-tts",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-embedding",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "tokenharbor",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "dahl",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "atria",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bai",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "xkiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apinex",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apmix",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "modelrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "zenmux",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "excelnt",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "unorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "teamorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "experientiallabs",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "qwencloud",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "lebang",
+      "skipped": "All saved connections disabled"
+    }
+  ]
+}

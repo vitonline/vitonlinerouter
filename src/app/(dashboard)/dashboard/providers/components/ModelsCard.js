@@ -1,4 +1,6 @@
 "use client";
+import { modelTestResult, modelTestKey } from "@/shared/utils/modelTestResult";
+import { useModelTestHistory, notifyModelTestsChanged } from "@/shared/hooks/useModelTestHistory";
 
 import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
@@ -9,6 +11,8 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 // ── ModelRow ───────────────────────────────────────────────────
 export function ModelRow({ model, fullModel, copied, onCopy, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting }) {
+  const testResult = typeof testStatus === "object" ? testStatus : null;
+  testStatus = testResult ? (testResult.ok ? "ok" : "error") : testStatus;
   const borderColor = testStatus === "ok" ? "border-green-500/40" : testStatus === "error" ? "border-red-500/40" : "border-border";
   const iconColor = testStatus === "ok" ? "#22c55e" : testStatus === "error" ? "#ef4444" : undefined;
 
@@ -21,6 +25,7 @@ export function ModelRow({ model, fullModel, copied, onCopy, testStatus, isCusto
         <div className="flex flex-col gap-1">
           <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
           {model.name && <span className="text-[9px] text-text-muted/70 italic pl-1">{model.name}</span>}
+          {testResult && !isTesting && <span title={testResult.error || undefined} className={`text-[11px] break-words pl-1 ${testResult.ok ? "text-green-500" : "text-red-500"}`}>{testResult.ok ? "Last test passed" : testResult.reason}{testResult.testedAt && <span className="block text-[9px] text-text-muted">Tested {new Date(testResult.testedAt).toLocaleString()}</span>}</span>}
         </div>
         {onTest && (
           <div className="relative group/btn">
@@ -58,7 +63,7 @@ ModelRow.propTypes = {
   fullModel: PropTypes.string.isRequired,
   copied: PropTypes.string,
   onCopy: PropTypes.func.isRequired,
-  testStatus: PropTypes.oneOf(["ok", "error"]),
+  testStatus: PropTypes.oneOfType([PropTypes.oneOf(["ok", "error"]), PropTypes.object]),
   isCustom: PropTypes.bool,
   isFree: PropTypes.bool,
   onDeleteAlias: PropTypes.func,
@@ -113,6 +118,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
   const [modelTestResults, setModelTestResults] = useState({});
+  const history = useModelTestHistory();
   const [testingModelId, setTestingModelId] = useState(null);
   const [testError, setTestError] = useState("");
   const [showAddCustomModel, setShowAddCustomModel] = useState(false);
@@ -189,10 +195,12 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
         body: JSON.stringify({ model: `${providerAlias}/${modelId}`, kind: kindFilter }),
       });
       const data = await res.json();
-      setModelTestResults((prev) => ({ ...prev, [modelId]: data.ok ? "ok" : "error" }));
-      setTestError(data.ok ? "" : (data.error || "Model not reachable"));
+      const result = modelTestResult(data);
+      setModelTestResults((prev) => ({ ...prev, [modelId]: result }));
+      notifyModelTestsChanged();
+      setTestError(data.ok ? "" : result.error);
     } catch {
-      setModelTestResults((prev) => ({ ...prev, [modelId]: "error" }));
+      setModelTestResults((prev) => ({ ...prev, [modelId]: modelTestResult({ ok: false, error: "Network error" }) }));
       setTestError("Network error");
     } finally { setTestingModelId(null); }
   };
@@ -237,7 +245,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
                 onCopy={copy}
                 onSetAlias={(alias) => handleSetAlias(model.id, alias)}
                 onDeleteAlias={() => handleDeleteAlias(existingAlias)}
-                testStatus={modelTestResults[model.id]}
+                testStatus={modelTestResults[model.id] || history.results[modelTestKey(`${providerAlias}/${model.id}`)]}
                 onTest={() => handleTestModel(model.id)}
                 isTesting={testingModelId === model.id}
                 isFree={model.isFree}
@@ -254,7 +262,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
               onCopy={copy}
               onSetAlias={() => {}}
               onDeleteAlias={() => handleDeleteCustomModel(model.id)}
-              testStatus={modelTestResults[model.id]}
+              testStatus={modelTestResults[model.id] || history.results[modelTestKey(`${providerAlias}/${model.id}`)]}
               onTest={() => handleTestModel(model.id)}
               isTesting={testingModelId === model.id}
               isCustom

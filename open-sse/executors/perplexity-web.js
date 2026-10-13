@@ -1,4 +1,5 @@
 import { BaseExecutor } from "./base.js";
+import { readWithTimeout } from "../utils/readWithTimeout.js";
 import { PROVIDERS } from "../config/providers.js";
 import { SSE_DONE, SSE_HEADERS_NO_BUFFER } from "../utils/sseConstants.js";
 import { sseChunk } from "../utils/sse.js";
@@ -107,7 +108,7 @@ async function* readPplxSseEvents(body, signal) {
   try {
     while (true) {
       if (signal?.aborted) return;
-      const { value, done } = await reader.read();
+      const { value, done } = await readWithTimeout(reader, undefined, signal);
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       while (true) {

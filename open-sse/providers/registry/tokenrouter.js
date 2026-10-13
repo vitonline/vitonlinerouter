@@ -15,6 +15,7 @@ export default {
     },
   },
   category: "apikey",
+  hasFree: true,
   thinkingConfig: {
     options: ["low", "medium", "high", "xhigh", "max"],
     defaultMode: "high",

@@ -1,0 +1,499 @@
+{
+  "providers": [
+    {
+      "id": "apinex",
+      "name": "APInex",
+      "manageUrl": "/dashboard/providers/apinex",
+      "issues": [
+        {
+          "reason": "Model unsupported or unavailable",
+          "action": "Select a current model from the provider's live catalog and check its supported endpoint. Older saved test results remain visible until retested.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "apinex/gpt-6-sol",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:52:13.430Z",
+              "error": "HTTP 503: [apinex/gpt-6-sol] [404]: {\"error\":{\"message\":\"Model 'gpt-6-sol' not found\",\"type\":\"not_found_error\",\"param\":null,\"code\":null}} (reset after 2m)",
+              "latencyMs": 620
+            }
+          ]
+        },
+        {
+          "reason": "Credits or plan restrictions",
+          "action": "Review balance, pending holds, purchase requirements and model eligibility in the provider account.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "apinex/claude-opus-5.5",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:55:25.362Z",
+              "error": "HTTP 503: [apinex/claude-opus-5.5] [402]: {\"error\":{\"message\":\"Anthropic models (Claude) are only available to accounts with at least one balance top-up. Please top up your balance to use Claude models.\",\"type\":\"billing_error\",\"param\":null,\"code\":null}} (reset after 2m)",
+              "latencyMs": 363
+            }
+          ]
+        },
+        {
+          "reason": "Daily check-in required",
+          "action": "Complete the daily check-in, then clear cooldown and retest. Automatic check-in is not configured; no supported check-in API has been verified.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "apinex/free/gpt-6-luna",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:55:25.551Z",
+              "error": "HTTP 503: [apinex/free/gpt-6-luna] [402]: {\"error\":{\"message\":\"Daily check-in required to use free models. Please visit https://apinex.bond/airdrop?tab=quests to check in.\",\"type\":\"billing_error\",\"param\":null,\"code\":null}} (reset after 2m)",
+              "latencyMs": 168
+            }
+          ],
+          "actionUrl": "https://apinex.bond/airdrop?tab=quests"
+        },
+        {
+          "reason": "Disabled connections were not enabled",
+          "action": "1 saved connection(s) are disabled. Enable only the connections you want to use, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models using those disabled connections"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "byteplus",
+      "name": "BytePlus ModelArk",
+      "manageUrl": "/dashboard/providers/byteplus",
+      "issues": [
+        {
+          "reason": "Expired or missing CodingPlan subscription",
+          "action": "Review the provider's CodingPlan subscription and endpoint. Renew or select an account with a valid plan, then retest.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "byteplus/seed-2-0-pro-260328",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:55:51.191Z",
+              "error": "HTTP 400: [400]: {\"error\":{\"code\":\"InvalidSubscription\",\"message\":\"Your account (3004667288) does not have a valid CodingPlan subscription, or your subscription has expired. Please visit https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?OpenModelVisible=false\\u0026tab=CodingPlan to review your subscription status or complete the subscription or renewal process.  Request id: 021791791749743373615d827d98655cdf28f8c9eebc817f0eb95\",\"param\":\"\",\"type\":\"Bad Request\"}}",
+              "latencyMs": 1482
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "cloudflare-ai",
+      "name": "Cloudflare",
+      "manageUrl": "/dashboard/providers/cloudflare-ai",
+      "issues": [
+        {
+          "reason": "Authentication rejection",
+          "action": "Verify the saved API key and required account/project identifier on the provider page, then retest.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "cloudflare-ai/@cf/meta/llama-3.2-1b-instruct",
+              "kind": "llm",
+              "testedAt": "2026-10-12T08:23:36.208Z",
+              "error": "HTTP 503: [cloudflare-ai/@cf/meta/llama-3.2-1b-instruct] [401]: {\"result\":null,\"success\":false,\"errors\":[{\"code\":10000,\"message\":\"Authentication error\"}],\"messages\":[]} (reset after 2m)",
+              "latencyMs": 3274
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "excelnt",
+      "name": "Excelnt",
+      "manageUrl": "/dashboard/providers/excelnt",
+      "issues": [
+        {
+          "reason": "Upstream overload",
+          "action": "Retry later or select another model/provider.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "excelnt/claude-opus-5-5",
+              "kind": "llm",
+              "testedAt": "2026-10-12T08:23:44.309Z",
+              "error": "HTTP 503: [excelnt/claude-opus-5-5] [503]: {\"error\":{\"message\":\"The server is currently experiencing high load and could not process your request. Please retry in a few moments.\",\"type\":\"server_error\",\"param\":null,\"code\":\"server_overloaded\"}} (reset after 2s)",
+              "latencyMs": 7060
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "experientiallabs",
+      "name": "Experiential Labs",
+      "manageUrl": "/dashboard/providers/experientiallabs",
+      "issues": [
+        {
+          "reason": "Credits or plan restrictions",
+          "action": "Review balance, pending holds, purchase requirements and model eligibility in the provider account.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "experientiallabs/aion-2.0",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:04.612Z",
+              "error": "HTTP 503: [experientiallabs/aion-2.0] [429]: {\"error\":{\"message\":\"model_requires_purchase: aion-2.0 is locked on your account until you make a purchase. Buy credits at https://platform.experientiallabs.ai/credits to unlock it, including its free usage; the $1 card verification alone does not unlock it. Available to you right now without a purchase: claude-opus-5.5, deepseek-v4-flash, deepseek-v4.1-flash, glm-5.3-flash-abliterated, gpt-5.6-luna, gpt-6-luna, gpt-6-sol, grok-4.7, jev-latest, mimo-v2.6-pro, q",
+              "latencyMs": 1153
+            },
+            {
+              "model": "experientiallabs/gpt-6-luna",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:57:32.963Z",
+              "error": "HTTP 503: [experientiallabs/gpt-6-luna] [429]: {\"error\":{\"message\":\"insufficient_credits: Your organization has no available platform credits (available after reservations: -27.53 credits). Pending holds are not settled spend. Review your balance and holds or add credits at https://platform.experientiallabs.ai/credits. Top-ups start at $5. Requests using your own provider keys (BYOK) are unaffected.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"insufficient_quota\"}} (reset after 2s)",
+              "latencyMs": 1201
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "lebang",
+      "name": "Lebang",
+      "manageUrl": "/dashboard/providers/lebang",
+      "issues": [
+        {
+          "reason": "Security software blocked upstream",
+          "action": "Review the security software's block and the provider URL. The router does not bypass the block.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "lebang/claude-fable-5",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:27.654Z",
+              "error": "HTTP 503: [lebang/claude-fable-5] [403]: {\"adminContact\":\"\",\"agent\":\"Codex\",\"agentInstruction\":\"IMPORTANT: Inform the user that norton_csp1 WebShield blocked this request. Read the blocked URL from the \\\"url\\\" field and the reason from the \\\"message\\\" field in this JSON response, then show both in your reply. This block protects the user; do not hide it, do not silently skip the URL, and do not attempt to bypass the block.\",\"blocked\":true,\"category\":\"malicious_url\",\"domain\":\"lebang.si\",\"message\":\"Access t",
+              "latencyMs": 3689
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "modelrouter",
+      "name": "ModelRouter",
+      "manageUrl": "/dashboard/providers/modelrouter",
+      "issues": [
+        {
+          "reason": "Free allowance exhausted",
+          "action": "Wait for the provider's allowance reset or select an eligible model/account. Clearing cooldown does not restore allowance.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "modelrouter/deepseek-v4.1-flash",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:31.476Z",
+              "error": "HTTP 503: [modelrouter/deepseek-v4.1-flash] [403]: {\"error\":{\"message\":\"Kamu telah mencapai batas maksimal 11 request Free Tier. Top-up saldo (min Rp 20.000) untuk lanjut: model gratis 201 request/hari, atau 1.000 request/hari setelah total top-up Rp 50.000. https://modelrouter.id/billing — atau beli paket VIP Pass/Enterprise.\",\"type\":\"requests\",\"param\":null,\"code\":\"free_tier_limit_exceeded\"}} (reset after 2m)",
+              "latencyMs": 3793
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "manageUrl": "/dashboard/providers/openrouter",
+      "issues": [
+        {
+          "reason": "Model requires agentic harness",
+          "action": "Use the provider's supported agent integration, or select another model such as OpenRouter's free router.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "openrouter/thinkingmachines/inkling-small:free",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:39.487Z",
+              "error": "HTTP 503: [openrouter/thinkingmachines/inkling-small:free] [403]: {\"error\":{\"message\":\"thinkingmachines/inkling-small:free is only available on agentic harnesses. Try plugging it into a coding agent or productivity app listed on https://openrouter.ai/apps\",\"code\":403,\"metadata\":{\"routing_funnel\":[{\"step\":\"Initial Endpoints\",\"endpoint_count\":1}],\"failed_routing_step\":\"Gate Free Endpoints by Agentic Harness\"}}} (reset after 2m)",
+              "latencyMs": 3539
+            }
+          ]
+        }
+      ],
+      "passedModels": 1
+    },
+    {
+      "id": "teamorouter",
+      "name": "TeamoRouter",
+      "manageUrl": "/dashboard/providers/teamorouter",
+      "issues": [
+        {
+          "reason": "Credits or plan restrictions",
+          "action": "Review balance, pending holds, purchase requirements and model eligibility in the provider account.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "teamorouter/deepseek-flash-free",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:45.955Z",
+              "error": "HTTP 400: [400]: {\"error\":{\"message\":\"Your TeamoRouter wallet balance is insufficient. Recharge at https://teamorouter.com/dashboard?buy=1 to continue.\",\"type\":\"insufficient_balance\",\"code\":\"enterprise_insufficient_balance\",\"details\":{\"source\":\"enterprise_wallet\",\"reason\":\"insufficient_funds\",\"http_status\":400,\"paywall\":true,\"paywall_site\":\"teamorouter\",\"recharge_url\":\"https://teamorouter.com/dashboard?buy=1\"}},\"trace_id\":\"945130b0-38e1-4247-a5ce-cb2b53e3b0f7\"}",
+              "latencyMs": 1101
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "tokenharbor",
+      "name": "Token Harbor",
+      "manageUrl": "/dashboard/providers/tokenharbor",
+      "issues": [
+        {
+          "reason": "Free allowance exhausted",
+          "action": "Wait for the provider's allowance reset or select an eligible model/account. Clearing cooldown does not restore allowance.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "tokenharbor/deepseek-v4.1-flash:free",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:52.203Z",
+              "error": "HTTP 503: [tokenharbor/deepseek-v4.1-flash:free] [429]: {\"error\":{\"message\":\"You've used this period's free allowance. Your next rolling 7-day period starts on 16 Oct 2026 at 18:11 UTC. Use the paid model 'deepseek-v4.1-flash' to keep going, or subscribe to a Token Harbor Pass for a recurring included allowance across more models. https://tokenharbor.ai/pricing\",\"type\":\"free_tier_limit_reached\",\"code\":\"free_tier_limit_reached\"}} (reset after 2s)",
+              "latencyMs": 6201
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "zenmux",
+      "name": "ZenMux",
+      "manageUrl": "/dashboard/providers/zenmux",
+      "issues": [
+        {
+          "reason": "Credits or plan restrictions",
+          "action": "Review balance, pending holds, purchase requirements and model eligibility in the provider account.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "zenmux/atria-asi/atria-dawn-preview",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:56:58.788Z",
+              "error": "HTTP 503: [zenmux/atria-asi/atria-dawn-preview] [402]: {\"error\":{\"code\":\"402\",\"type\":\"reject_no_credit\",\"message\":\"Access denied: this model is only available to accounts with a balance greater than 0. This is an anti-abuse measure, not a usage charge. (request_id: 53404486515543be89b1f800c08c09a2)\"}} (reset after 2m)",
+              "latencyMs": 1424
+            }
+          ]
+        },
+        {
+          "reason": "Rate limit reached",
+          "action": "Wait before retesting, or select another eligible model/account.",
+          "scope": "models",
+          "models": [
+            {
+              "model": "zenmux/z-ai/glm-4.7-flash-free",
+              "kind": "llm",
+              "testedAt": "2026-10-12T07:57:01.540Z",
+              "error": "HTTP 503: [zenmux/z-ai/glm-4.7-flash-free] [429]: {\"error\":{\"code\":\"429\",\"type\":\"rate_limit\",\"message\":\"该模型当前访问量过大，请您稍后再试 (request_id: 66d62d6a55ce43b791b7cf09bda234b0)\"}} (reset after 2s)",
+              "latencyMs": 2739
+            }
+          ]
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "agnes",
+      "name": "Agnes AI",
+      "manageUrl": "/dashboard/providers/agnes",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "api-airforce",
+      "name": "API.airforce",
+      "manageUrl": "/dashboard/providers/api-airforce",
+      "issues": [
+        {
+          "reason": "Disabled connections were not enabled",
+          "action": "1 saved connection(s) are disabled. Enable only the connections you want to use, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models using those disabled connections"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "bai",
+      "name": "B.ai",
+      "manageUrl": "/dashboard/providers/bai",
+      "issues": [
+        {
+          "reason": "Disabled connections were not enabled",
+          "action": "1 saved connection(s) are disabled. Enable only the connections you want to use, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models using those disabled connections"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "fal-ai",
+      "name": "Fal.ai",
+      "manageUrl": "/dashboard/media-providers/image/fal-ai",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "huggingface",
+      "name": "HuggingFace",
+      "manageUrl": "/dashboard/media-providers/image/huggingface",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "mmf",
+      "name": "MMF",
+      "manageUrl": "/dashboard/providers/mmf",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "ollama-local",
+      "name": "Ollama Local",
+      "manageUrl": "/dashboard/providers/ollama-local",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "selfhosted-embedding",
+      "name": "Self-hosted Embedding",
+      "manageUrl": "/dashboard/media-providers/embedding/selfhosted-embedding",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "selfhosted-stt",
+      "name": "Self-hosted STT",
+      "manageUrl": "/dashboard/media-providers/stt/selfhosted-stt",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "selfhosted-tts",
+      "name": "Self-hosted TTS",
+      "manageUrl": "/dashboard/media-providers/tts/selfhosted-tts",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "tokenrouter",
+      "name": "TokenRouter",
+      "manageUrl": "/dashboard/providers/tokenrouter",
+      "issues": [
+        {
+          "reason": "Disabled connections were not enabled",
+          "action": "1 saved connection(s) are disabled. Enable only the connections you want to use, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models using those disabled connections"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "vertex",
+      "name": "Vertex AI",
+      "manageUrl": "/dashboard/providers/vertex",
+      "issues": [
+        {
+          "reason": "No saved connection",
+          "action": "Add the provider credentials or service endpoint, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models from this provider"
+        }
+      ],
+      "passedModels": 0
+    },
+    {
+      "id": "xkiro",
+      "name": "xKiro",
+      "manageUrl": "/dashboard/providers/xkiro",
+      "issues": [
+        {
+          "reason": "Disabled connections were not enabled",
+          "action": "1 saved connection(s) are disabled. Enable only the connections you want to use, then test a model.",
+          "scope": "connections",
+          "models": [],
+          "affected": "All models using those disabled connections"
+        }
+      ],
+      "passedModels": 1
+    }
+  ],
+  "updatedAt": "2026-10-12T08:38:37.214Z"
+}

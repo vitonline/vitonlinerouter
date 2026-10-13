@@ -1,0 +1,230 @@
+{
+  "testedAt": "2026-10-12T08:23:22.094Z",
+  "scope": "One representative chat model per active configured provider; free alternatives on failure",
+  "results": [
+    {
+      "provider": "atria",
+      "tests": [
+        {
+          "model": "atria/Atria-Dawn-Preview",
+          "kind": "llm",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 10662,
+          "testedAt": "2026-10-12T08:23:32.843Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "cloudflare-ai",
+      "tests": [
+        {
+          "model": "cloudflare-ai/@cf/meta/llama-3.2-1b-instruct",
+          "kind": "llm",
+          "ok": false,
+          "reason": "Authentication rejection",
+          "error": "HTTP 503: [cloudflare-ai/@cf/meta/llama-3.2-1b-instruct] [401]: {\"result\":null,\"success\":false,\"errors\":[{\"code\":10000,\"message\":\"Authentication error\"}],\"messages\":[]} (reset after 2m)",
+          "status": 503,
+          "latencyMs": 3274,
+          "testedAt": "2026-10-12T08:23:36.208Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "edge-tts",
+      "tests": [
+        {
+          "model": "edge-tts/en-US-AriaNeural",
+          "kind": "tts",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 909,
+          "testedAt": "2026-10-12T08:23:37.177Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "excelnt",
+      "tests": [
+        {
+          "model": "excelnt/claude-opus-5-5",
+          "kind": "llm",
+          "ok": false,
+          "reason": "Upstream overload",
+          "error": "HTTP 503: [excelnt/claude-opus-5-5] [503]: {\"error\":{\"message\":\"The server is currently experiencing high load and could not process your request. Please retry in a few moments.\",\"type\":\"server_error\",\"param\":null,\"code\":\"server_overloaded\"}} (reset after 2s)",
+          "status": 503,
+          "latencyMs": 7060,
+          "testedAt": "2026-10-12T08:23:44.309Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "google-tts",
+      "tests": [
+        {
+          "model": "google-tts/af",
+          "kind": "tts",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 1265,
+          "testedAt": "2026-10-12T08:23:45.634Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "nanobanana",
+      "tests": [
+        {
+          "model": "nanobanana/nanobanana-flash",
+          "kind": "image",
+          "ok": true,
+          "reason": "Test passed",
+          "error": "",
+          "status": 200,
+          "latencyMs": 10168,
+          "testedAt": "2026-10-12T08:23:55.878Z",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "provider": "byteplus",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "fal-ai",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "groq",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "huggingface",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "kiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "local-device",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "nvidia",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "ollama",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "opencode",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "openrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "vertex",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "api-airforce",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bazaarlink",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "kilo-gateway",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "poolside",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "tokenrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "selfhosted-stt",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-tts",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "selfhosted-embedding",
+      "skipped": "No saved connection"
+    },
+    {
+      "provider": "tokenharbor",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "dahl",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "bai",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "xkiro",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apinex",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "apmix",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "modelrouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "zenmux",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "unorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "teamorouter",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "experientiallabs",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "qwencloud",
+      "skipped": "All saved connections disabled"
+    },
+    {
+      "provider": "lebang",
+      "skipped": "All saved connections disabled"
+    }
+  ]
+}

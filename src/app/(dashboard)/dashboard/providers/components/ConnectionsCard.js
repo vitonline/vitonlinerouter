@@ -73,7 +73,7 @@ function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMov
     check();
     const t = modelLockUntil ? setInterval(check, 1000) : null;
     return () => { if (t) clearInterval(t); };
-  }, [modelLockUntil]);
+  }, [connection, modelLockUntil]);
 
   useEffect(() => {
     if (!showProxyDropdown) return;
@@ -85,7 +85,7 @@ function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMov
     return () => document.removeEventListener("mousedown", handler);
   }, [showProxyDropdown]);
 
-  const effectiveStatus = connection.testStatus === "unavailable" && !isCooldown ? "active" : connection.testStatus;
+  const effectiveStatus = connection.testStatus === "unavailable" && !isCooldown ? "unknown" : connection.testStatus;
 
   const getStatusVariant = () => getConnectionStatusVariant(connection.isActive, effectiveStatus);
 
@@ -115,7 +115,7 @@ function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMov
           <p className="text-sm font-medium truncate">{displayName}</p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <Badge variant={getStatusVariant()} size="sm" dot>
-              {connection.isActive === false ? "disabled" : (effectiveStatus || "Unknown")}
+              {connection.isActive === false ? "disabled" : connection.verificationNeeded || (connection.testStatus === "unavailable" && !isCooldown) ? "Verification needed" : (effectiveStatus || "Unknown")}
             </Badge>
             {hasAnyProxy && <Badge variant={proxyBadgeVariant} size="sm">Proxy</Badge>}
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
@@ -325,7 +325,11 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
     finally { setLoading(false); }
   }, [providerId]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) fetch_(); });
+    return () => { cancelled = true; };
+  }, [fetch_]);
 
   const saveStrategy = async (strategy, stickyLimit) => {
     try {

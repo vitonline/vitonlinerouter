@@ -1,4 +1,5 @@
 import { PROVIDERS } from "../config/providers.js";
+import { REFRESH_TIMEOUT_MS } from "../config/runtimeConfig.js";
 import { OAUTH_ENDPOINTS, REFRESH_LEAD_MS } from "../config/appConstants.js";
 import {
   refreshXaiToken,
@@ -99,6 +100,7 @@ export async function refreshVertexToken(saJson, log) {
       .sign(privateKey);
 
     const res = await fetch(OAUTH_ENDPOINTS.google.token, {
+      signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({

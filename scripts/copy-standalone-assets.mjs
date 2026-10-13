@@ -32,6 +32,7 @@ export function copyStandaloneAssets({ projectRoot = process.cwd(), distDir = pr
 
   // Without it beside server.js the standalone build serves requests unsanitized.
   const serverWrapperSource = resolve(projectRoot, "custom-server.js");
+  cpSync(resolve(projectRoot, "shutdown.cjs"), resolve(standaloneDir, "shutdown.cjs"), { force: true });
   const serverWrapperDestination = resolve(standaloneDir, "custom-server.js");
   if (existsSync(serverWrapperSource)) {
     cpSync(serverWrapperSource, serverWrapperDestination, { force: true });

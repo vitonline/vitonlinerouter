@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { BRAND } from "open-sse/config/brand.js";
 import { LEGACY_FILES, DB_DIR } from "./paths.js";
 import { TABLES, buildCreateTableSql, SCHEMA_VERSION } from "./schema.js";
 import { MIGRATIONS, latestVersion } from "./migrations/index.js";
@@ -27,12 +29,15 @@ export class MigrationAborted extends Error {
 // Insert rows one-by-one, collect failures, then assert COUNT(*) matches input length.
 function importWithAssertion(adapter, tableName, rows, insertFn, rowMeta) {
   const dropped = [];
+  // Legacy IDs may repeat: preserve their original last-write-wins semantics.
+  const unique = new Map(rows.map((row, index) => [row.id ?? `missing-${index}`, row]));
+  rows = [...unique.values()];
   for (const row of rows) {
     try { insertFn(row); }
     catch (err) { dropped.push({ ...rowMeta(row), reason: err.message }); }
   }
-  const inserted = adapter.get(`SELECT COUNT(*) as c FROM ${tableName}`)?.c ?? 0;
-  if (inserted !== rows.length) {
+  const inserted = rows.filter(row => row.id != null && adapter.get(`SELECT id FROM ${tableName} WHERE id = ?`, [row.id])).length;
+  if (dropped.length || inserted !== rows.length) {
     console.warn(`[DB][migrate] ${tableName} row-count mismatch: expected ${rows.length}, got ${inserted}. Dropped:`, dropped);
     throw new MigrationAborted(`${tableName} row-count mismatch: expected ${rows.length}, got ${inserted}`, dropped);
   }
@@ -215,7 +220,6 @@ function importLegacyDetails(adapter, data) {
 // ─── Main entry ──────────────────────────────────────────────────────────
 export async function runMigrationOnce(adapter) {
   if (_migratedAdapters.has(adapter)) return;
-  _migratedAdapters.add(adapter);
 
   // Capture freshness BEFORE migrations stamp _meta (otherwise we'd misclassify
   // a brand-new DB as non-fresh once schemaVersion is written).
@@ -239,7 +243,7 @@ export async function runMigrationOnce(adapter) {
       pruneOldBackups();
       console.log(`[DB][migrate] pre-schema backup ${storedSchemaVer} → ${SCHEMA_VERSION}: ${backupDir}`);
     } catch (e) {
-      console.warn(`[DB][migrate] pre-schema backup failed (continuing): ${e.message}`);
+      throw new Error(`Pre-schema backup failed; migration stopped: ${e.message}`, { cause: e });
     }
   }
 
@@ -254,16 +258,22 @@ export async function runMigrationOnce(adapter) {
 
   // 3. One-time legacy JSON import (only if DB was fresh on entry)
   const alreadyImported = fs.existsSync(MIGRATED_MARKER);
-  const legacyMain = readJsonSafe(LEGACY_FILES.main);
-  const legacyUsage = readJsonSafe(LEGACY_FILES.usage);
-  const legacyDisabled = readJsonSafe(LEGACY_FILES.disabled);
-  const legacyDetails = readJsonSafe(LEGACY_FILES.details);
+  let legacyFiles = LEGACY_FILES;
+  const legacyHome = process.env.LEGACY_DATA_DIR || (!process.env.DATA_DIR ? path.join(os.homedir(), `.${BRAND.slug}`) : null);
+  if (!Object.values(LEGACY_FILES).some(file => fs.existsSync(file)) && legacyHome) {
+    const candidate = Object.fromEntries(Object.entries(LEGACY_FILES).map(([key, file]) => [key, path.join(legacyHome, path.basename(file))]));
+    if (Object.values(candidate).some(file => fs.existsSync(file))) legacyFiles = candidate;
+  }
+  const legacyMain = readJsonSafe(legacyFiles.main);
+  const legacyUsage = readJsonSafe(legacyFiles.usage);
+  const legacyDisabled = readJsonSafe(legacyFiles.disabled);
+  const legacyDetails = readJsonSafe(legacyFiles.details);
   const hasLegacy = !!(legacyMain || legacyUsage || legacyDisabled || legacyDetails);
 
   if (fresh && hasLegacy && !alreadyImported) {
     const t0 = Date.now();
     const backupDir = makeBackupDir("migrate-from-json");
-    for (const f of Object.values(LEGACY_FILES)) backupFile(f, backupDir);
+    for (const f of Object.values(legacyFiles)) backupFile(f, backupDir);
 
     try {
       adapter.transaction(() => {
@@ -278,7 +288,7 @@ export async function runMigrationOnce(adapter) {
     } catch (err) {
       if (err instanceof MigrationAborted) {
         console.error(`[DB][migrate] aborted: ${err.message} | legacy JSON kept | backup: ${backupDir}`);
-        return;
+        throw err;
       }
       throw err;
     }
@@ -286,6 +296,7 @@ export async function runMigrationOnce(adapter) {
     try { fs.writeFileSync(MIGRATED_MARKER, new Date().toISOString()); } catch {}
     pruneOldBackups();
     console.log(`[DB][migrate] JSON → SQLite in ${Date.now() - t0}ms | legacy JSON kept at DATA_DIR | backup: ${backupDir}`);
+    _migratedAdapters.add(adapter);
     return;
   }
 
@@ -294,4 +305,5 @@ export async function runMigrationOnce(adapter) {
   const newVer = getAppVersion();
   const oldVer = getMetaSync(adapter, "appVersion", null);
   if (oldVer !== newVer) setMetaSync(adapter, "appVersion", newVer);
+  _migratedAdapters.add(adapter);
 }

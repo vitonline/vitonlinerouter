@@ -194,7 +194,7 @@ export default function Sidebar({ onClose }) {
             <BrandMark className="size-9 shrink-0 drop-shadow-[0_6px_16px_rgba(79,107,255,0.45)]" />
             <div className="min-w-0">
               <p className="truncate text-[15px] font-bold tracking-tight text-white">{BRAND.name}</p>
-              <p className="truncate text-[11px] text-rail-muted">Free models router</p>
+              <p className="truncate text-[11px] text-rail-muted">Your coding tools, one endpoint</p>
             </div>
           </Link>
           {updateInfo && (
