@@ -13,7 +13,7 @@ Requires Node.js 20.9 or newer (22 recommended).
 
 ```bash
 git clone https://github.com/vitonline/vitonlinerouter.git
-cd VitonlineRouter
+cd vitonlinerouter
 npm run launch
 ```
 
