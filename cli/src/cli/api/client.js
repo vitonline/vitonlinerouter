@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = {
   protocol: "http:",
 };
 
-const CLI_TOKEN_HEADER = "x-fr-cli-token";
+const CLI_TOKEN_HEADER = "x-vr-cli-token";
 const CLI_TOKEN_SALT = "fr-cli-auth";
 const APP_NAME = BRAND.slug;
 
@@ -367,7 +367,7 @@ async function deleteCombo(id) {
 /**
  * Get CLI tool settings
  * @param {string} tool - Tool name: claude | codex | droid | openclaw
- * @returns {Promise<Object>} { success, data: { installed, hasFlagshipRouter, ... } }
+ * @returns {Promise<Object>} { success, data: { installed, hasVitonlineRouter, ... } }
  */
 async function getCliToolSettings(tool) {
   return makeRequest("GET", `/api/cli-tools/${tool}-settings`);

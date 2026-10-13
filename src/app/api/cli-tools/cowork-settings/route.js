@@ -10,7 +10,7 @@ import { UPDATER_CONFIG } from "@/shared/constants/config";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 
 const APP_PORT = UPDATER_CONFIG.appPort;
-const CLI_TOKEN_HEADER = "x-fr-cli-token";
+const CLI_TOKEN_HEADER = "x-vr-cli-token";
 const CLI_TOKEN_SALT = "fr-cli-auth";
 const LOCAL_MCP_PREFIX = `http://localhost:${APP_PORT}/api/mcp/`;
 

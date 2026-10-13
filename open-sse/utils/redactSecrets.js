@@ -1,4 +1,4 @@
-const SENSITIVE_FIELD = /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|access[-_]?token|refresh[-_]?token|token|password|client[-_]?secret|x-fr-cli-token)$/i;
+const SENSITIVE_FIELD = /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|access[-_]?token|refresh[-_]?token|token|password|client[-_]?secret|x-vr-cli-token)$/i;
 
 export function redactSecretText(value) {
   return String(value)

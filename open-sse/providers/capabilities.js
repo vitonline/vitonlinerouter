@@ -131,7 +131,7 @@ export const MODEL_CAPABILITIES = {
   // Qwen plain coder/text (no vision) — registry "vision-model" / "coder-model" aliases
   "vision-model":      { vision: true, reasoning: true, thinkingFormat: "qwen", contextWindow: 1000000 },
   "coder-model":       { reasoning: true, thinkingFormat: "qwen", contextWindow: 1000000 },
-  // FlagshipRouter free-tier Qwen Plus snapshot: the generic *qwen*plus* pattern
+  // VitonlineRouter free-tier Qwen Plus snapshot: the generic *qwen*plus* pattern
   // claims a 1M context window, but xkiro's live /v1/models reports 131072 for
   // this dated id (context_length 131072, max_output_tokens 65536, vision on).
   "qwen-plus-2025-07-28:free": { vision: true, reasoning: true, thinkingFormat: "qwen", contextWindow: 131072, maxOutput: 65536 },

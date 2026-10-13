@@ -92,8 +92,8 @@ graphify-out/*
 
 # Kiro local workspace state
 .kiro/
-flagshiprouter-*
-/flagshiprouter-*.tgz
+vitonlinerouter-*
+/vitonlinerouter-*.tgz
 
 # Local sensitive / temp files
 .engine-token.txt

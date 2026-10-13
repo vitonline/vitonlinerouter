@@ -1,25 +1,25 @@
 ---
-name: flagshiprouter-web-fetch
-description: Fetch URL → markdown / text / HTML via FlagshipRouter /v1/web/fetch using Ollama Cloud / Firecrawl / Jina Reader / Tavily Extract / Exa Contents. Use when the user wants to scrape a webpage, extract URL content, read article, or convert a URL to markdown.
+name: vitonlinerouter-web-fetch
+description: Fetch URL → markdown / text / HTML via VitonlineRouter /v1/web/fetch using Ollama Cloud / Firecrawl / Jina Reader / Tavily Extract / Exa Contents. Use when the user wants to scrape a webpage, extract URL content, read article, or convert a URL to markdown.
 ---
 
-# FlagshipRouter — Web Fetch
+# VitonlineRouter — Web Fetch
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webFetch") | .id'
+curl $VITONLINEROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webFetch") | .id'
 # Per-provider params
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=firecrawl/fetch"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=firecrawl/fetch"
 ```
 
 IDs end in `/fetch` (e.g. `firecrawl/fetch`, `jina/fetch`). `fetch-combo` chains providers with auto-fallback.
 
 ## Endpoint
 
-`POST $FLAGSHIPROUTER_URL/v1/web/fetch`
+`POST $VITONLINEROUTER_URL/v1/web/fetch`
 
 | Field | Required | Notes |
 |---|---|---|
@@ -32,32 +32,32 @@ IDs end in `/fetch` (e.g. `firecrawl/fetch`, `jina/fetch`). `fetch-combo` chains
 
 ### Jina Reader
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/web/fetch \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"jina-reader","url":"https://flagshiprouter.com","format":"markdown"}'
+  -d '{"model":"jina-reader","url":"https://vitonlinerouter.com","format":"markdown"}'
 ```
 
 ### Exa
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/web/fetch \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"exa","url":"https://example.com","format":"markdown","max_characters":0}'
 ```
 
 ### Firecrawl
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/web/fetch \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"firecrawl","url":"https://example.com","format":"markdown","max_characters":0}'
 ```
 
 ### Tavily
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/web/fetch \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"tavily","url":"https://example.com","format":"markdown","max_characters":0}'
 ```
@@ -67,8 +67,8 @@ curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
 Uses the API key from the existing `ollama` connection.
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/web/fetch \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"ollama","url":"https://example.com","format":"markdown"}'
 ```
@@ -77,9 +77,9 @@ curl -X POST $FLAGSHIPROUTER_URL/v1/web/fetch \
 JS:
 
 ```js
-const r = await fetch(`${process.env.FLAGSHIPROUTER_URL}/v1/web/fetch`, {
+const r = await fetch(`${process.env.VITONLINEROUTER_URL}/v1/web/fetch`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.FLAGSHIPROUTER_KEY}`, "Content-Type": "application/json" },
+  headers: { "Authorization": `Bearer ${process.env.VITONLINEROUTER_KEY}`, "Content-Type": "application/json" },
   body: JSON.stringify({ model: "fetch-combo", url: "https://example.com", format: "markdown", max_characters: 5000 }),
 });
 const { data } = await r.json();

@@ -49,7 +49,7 @@ const hasRouterInYml = (content) => {
   return content.includes(`${BRAND.modelPrefix}:`) || content.includes("localhost:20128");
 };
 
-// Build standard FlagshipRouter provider block for models.yml
+// Build standard VitonlineRouter provider block for models.yml
 const buildOmpProviderYaml = (baseUrl, apiKey) => {
   const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
   const key = apiKey || `sk_${BRAND.modelPrefix}`;
@@ -106,7 +106,7 @@ export async function POST(request) {
     let ymlContent = await readModelsYml();
     const providerBlock = buildOmpProviderYaml(baseUrl, apiKey);
 
-    // Remove existing flagshiprouter provider if present
+    // Remove existing vitonlinerouter provider if present
     const regex = new RegExp(`\\s*${PROVIDER_ID}:[\\s\\S]*?(?=\\n\\s*\\w+:|$)`, "g");
     ymlContent = ymlContent.replace(regex, "");
 

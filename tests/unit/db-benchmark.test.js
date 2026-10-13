@@ -26,14 +26,14 @@ async function bench(label, fn) {
 
 beforeAll(async () => {
   // SQLite setup
-  tempSqlite = fs.mkdtempSync(path.join(os.tmpdir(), "flagshiprouter-bench-sqlite-"));
+  tempSqlite = fs.mkdtempSync(path.join(os.tmpdir(), "vitonlinerouter-bench-sqlite-"));
   process.env.DATA_DIR = tempSqlite;
   vi.resetModules();
   sqliteDb = await import("@/lib/db/index.js");
   await sqliteDb.initDb();
 
   // Lowdb setup — direct lowdb usage (mimics legacy behavior)
-  tempLowdb = fs.mkdtempSync(path.join(os.tmpdir(), "flagshiprouter-bench-lowdb-"));
+  tempLowdb = fs.mkdtempSync(path.join(os.tmpdir(), "vitonlinerouter-bench-lowdb-"));
   const { Low } = await import("lowdb");
   const { JSONFile } = await import("lowdb/node");
   const dbFile = path.join(tempLowdb, "db.json");

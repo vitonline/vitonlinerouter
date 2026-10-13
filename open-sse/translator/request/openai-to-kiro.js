@@ -293,7 +293,7 @@ function convertMessages(messages, model) {
 /**
  * Build Kiro payload from OpenAI format
  *
- * Two flagshiprouter-specific behaviours implemented here:
+ * Two vitonlinerouter-specific behaviours implemented here:
  *
  * 1. `-agentic` model suffix. Synthetic variant — same upstream model, but we
  *    inject a chunked-write system prompt to keep large file writes under

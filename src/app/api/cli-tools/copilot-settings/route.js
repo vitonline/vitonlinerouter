@@ -61,7 +61,7 @@ export async function GET() {
   }
 }
 
-// POST - Apply FlagshipRouter config to chatLanguageModels.json
+// POST - Apply VitonlineRouter config to chatLanguageModels.json
 export async function POST(request) {
   try {
     const { baseUrl, apiKey, models } = await request.json();
@@ -99,7 +99,7 @@ export async function POST(request) {
       })),
     };
 
-    // Replace existing FlagshipRouter entry or append
+    // Replace existing VitonlineRouter entry or append
     const idx = config.findIndex((e) => e.name === BRAND.name);
     if (idx >= 0) {
       config[idx] = newEntry;
@@ -120,7 +120,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove FlagshipRouter entry from chatLanguageModels.json
+// DELETE - Remove VitonlineRouter entry from chatLanguageModels.json
 export async function DELETE() {
   try {
     const configPath = getConfigPath();

@@ -16,7 +16,7 @@ export async function getInternalHeaders() {
 
   const headers = { "Content-Type": "application/json" };
   if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-  headers["x-fr-cli-token"] = await getConsistentMachineId(CLI_TOKEN_SALT);
+  headers["x-vr-cli-token"] = await getConsistentMachineId(CLI_TOKEN_SALT);
   return headers;
 }
 

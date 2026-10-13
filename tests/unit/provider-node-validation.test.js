@@ -6,7 +6,7 @@ it("normalizes names and endpoints for all supported formats", () => {
   expect(validateProviderNode({ ...input, type: "anthropic-compatible", baseUrl: "https://example.com/api/v1/messages" }).baseUrl).toBe("https://example.com/api/v1");
   expect(validateProviderNode({ ...input, type: "custom-embedding", baseUrl: "https://example.com/v1/embeddings" }).baseUrl).toBe("https://example.com/v1");
 });
-it.each(["openai", "qw", "qwencloud", "bpm", "flagshiprouter", "openai-compatible-chat-example", "Upper", "a/b", "a".repeat(65)])("rejects invalid or reserved prefix %s", prefix => {
+it.each(["openai", "qw", "qwencloud", "bpm", "vitonlinerouter", "openai-compatible-chat-example", "Upper", "a/b", "a".repeat(65)])("rejects invalid or reserved prefix %s", prefix => {
   expect(() => validateProviderNode({ ...input, prefix })).toThrow();
 });
 it("rejects duplicate prefixes but permits editing the same node", () => {

@@ -24,7 +24,7 @@ concurrency:
   queue: max
 
 env:
-  # Docker Hub publishing is off for FlagshipRouter; images go to ghcr.io/<owner>/<repo>.
+  # Docker Hub publishing is off for VitonlineRouter; images go to ghcr.io/<owner>/<repo>.
   DOCKERHUB_IMAGE: ""
 
 jobs:
@@ -188,8 +188,8 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ needs.prepare.outputs.commit }}
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
-          cache-from: type=gha,scope=flagshiprouter-${{ matrix.suffix }}
-          cache-to: type=gha,mode=max,scope=flagshiprouter-${{ matrix.suffix }}
+          cache-from: type=gha,scope=vitonlinerouter-${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=vitonlinerouter-${{ matrix.suffix }}
           provenance: false
           sbom: false
 
@@ -202,7 +202,7 @@ jobs:
           set -Eeuo pipefail
           [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 
-          container="flagshiprouter-platform-smoke-${GITHUB_RUN_ID}-${{ matrix.suffix }}"
+          container="vitonlinerouter-platform-smoke-${GITHUB_RUN_ID}-${{ matrix.suffix }}"
           trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 
           docker run --detach \
@@ -318,7 +318,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -Eeuo pipefail
-          container="flagshiprouter-manifest-smoke-${GITHUB_RUN_ID}"
+          container="vitonlinerouter-manifest-smoke-${GITHUB_RUN_ID}"
           trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 
           docker run --detach \

@@ -3,9 +3,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { redactSecrets } from '../open-sse/utils/redactSecrets.js';
 
-const dataDir = path.join(process.env.APPDATA, 'flagshiprouter');
+const dataDir = path.join(process.env.APPDATA, 'vitonlinerouter');
 const token = crypto.createHash('sha256').update(fs.readFileSync(path.join(dataDir, 'machine-id'), 'utf8').trim() + 'fr-cli-auth' + fs.readFileSync(path.join(dataDir, 'auth/cli-secret'), 'utf8').trim()).digest('hex').slice(0,16);
-const headers = {'x-fr-cli-token': token, 'Content-Type':'application/json'};
+const headers = {'x-vr-cli-token': token, 'Content-Type':'application/json'};
 async function api(route, body) {
   const res = await fetch(`http://127.0.0.1:20128/api/${route}`, { headers, ...(body ? {method:'POST',body:JSON.stringify(body)} : {}), signal:AbortSignal.timeout(150000) });
   if (!res.ok) throw new Error(`${route}: HTTP ${res.status}`);
@@ -74,7 +74,7 @@ for (const provider of configured) {
  report.results.push({provider,tests});
  fs.writeFileSync(output,JSON.stringify(redactSecrets(report),null,2));
 }
-for (const provider of [...new Set(catalog.models.map(m=>m.providerId))].filter(p=>p!=='flagshiprouter'&&!configured.includes(p))) {
+for (const provider of [...new Set(catalog.models.map(m=>m.providerId))].filter(p=>p!=='vitonlinerouter'&&!configured.includes(p))) {
  report.results.push({provider,skipped:connections.connections.some(c=>c.provider===provider)?'All saved connections disabled':'No saved connection'});
 }
 fs.writeFileSync(output,JSON.stringify(redactSecrets(report),null,2));

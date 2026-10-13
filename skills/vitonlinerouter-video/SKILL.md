@@ -1,13 +1,13 @@
 ---
-name: flagshiprouter-video
-description: Generate videos via FlagshipRouter /v1/videos/generations using xAI Grok Imagine (grok-imagine-video). Async job flow - submit, poll request_id until done, download MP4. Use when the user wants to create, generate, or render a video, text-to-video (txt2vid), or image-to-video.
+name: vitonlinerouter-video
+description: Generate videos via VitonlineRouter /v1/videos/generations using xAI Grok Imagine (grok-imagine-video). Async job flow - submit, poll request_id until done, download MP4. Use when the user wants to create, generate, or render a video, text-to-video (txt2vid), or image-to-video.
 ---
 
-# FlagshipRouter — Video Generation (xAI Grok Imagine)
+# VitonlineRouter — Video Generation (xAI Grok Imagine)
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
-Requires a connected **xAI account** in the FlagshipRouter dashboard — either **Grok Build OAuth** (SuperGrok / X Premium+ subscription sign-in) or a direct **xAI API key** from console.x.ai. The two are separate auth types with separate billing; the dashboard shows which one each connection uses.
+Requires a connected **xAI account** in the VitonlineRouter dashboard — either **Grok Build OAuth** (SuperGrok / X Premium+ subscription sign-in) or a direct **xAI API key** from console.x.ai. The two are separate auth types with separate billing; the dashboard shows which one each connection uses.
 
 ## Endpoints (async job flow)
 
@@ -37,18 +37,18 @@ Request fields (passed through to xAI unchanged — see https://docs.x.ai/develo
 Submit a job:
 
 ```bash
-curl -X POST "$FLAGSHIPROUTER_URL/v1/videos/generations" \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST "$VITONLINEROUTER_URL/v1/videos/generations" \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"xai/grok-imagine-video","prompt":"A cinematic tracking shot through a neon city at night","duration":8,"aspect_ratio":"16:9","resolution":"720p"}'
-# → {"request_id":"abc123"}   (response header x-flagshiprouter-connection-id: <id>)
+# → {"request_id":"abc123"}   (response header x-vitonlinerouter-connection-id: <id>)
 ```
 
 Poll until done (echo the connection header back so the same account polls the job):
 
 ```bash
-curl "$FLAGSHIPROUTER_URL/v1/videos/abc123" \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl "$VITONLINEROUTER_URL/v1/videos/abc123" \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "x-connection-id: <id from create response>"
 # → {"status":"pending","progress":42}
 # → {"status":"done","video":{"url":"https://…mp4","duration":8},"model":"grok-imagine-video"}
@@ -60,7 +60,7 @@ Download: fetch `video.url` from the `done` response.
 ## CLI one-shot
 
 ```bash
-flagshiprouter xai video \
+vitonlinerouter xai video \
   --prompt "A cinematic tracking shot through a neon city at night" \
   --output video.mp4
 # options: --model --duration --aspect-ratio --resolution --image --timeout --port --api-key
@@ -70,7 +70,7 @@ Submits, polls with progress, downloads to `video.mp4.part`, atomically renames 
 
 ## Notes & limits
 
-- Jobs are **account-bound** upstream: poll with the same connection that created the job (`x-connection-id` header, value from the create response's `x-flagshiprouter-connection-id`).
+- Jobs are **account-bound** upstream: poll with the same connection that created the job (`x-connection-id` header, value from the create response's `x-vitonlinerouter-connection-id`).
 - Creation POSTs are **never auto-retried** (a retry could create and bill two videos). Only a 401→token-refresh→single-retry is performed, which upstream rejects before job creation.
 - Video models are tagged `kind: "video"` and are excluded from chat model lists and chat fallback combos.
-- Grok Build **subscription OAuth** tokens are sent to the same `api.x.ai/v1/videos` endpoints as API keys; whether a given subscription tier includes video-generation quota is controlled by xAI and is not verified by FlagshipRouter — a `403`/`permission_denied` from upstream means the connected account has no video access.
+- Grok Build **subscription OAuth** tokens are sent to the same `api.x.ai/v1/videos` endpoints as API keys; whether a given subscription tier includes video-generation quota is controlled by xAI and is not verified by VitonlineRouter — a `403`/`permission_denied` from upstream means the connected account has no video access.

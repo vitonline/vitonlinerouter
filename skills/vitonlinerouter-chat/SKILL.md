@@ -1,23 +1,23 @@
 ---
-name: flagshiprouter-chat
-description: Chat / code generation via FlagshipRouter using OpenAI /v1/chat/completions or Anthropic /v1/messages format with streaming + auto-fallback combos. Use when the user wants to ask an LLM, generate code, summarize text, or run prompts through FlagshipRouter.
+name: vitonlinerouter-chat
+description: Chat / code generation via VitonlineRouter using OpenAI /v1/chat/completions or Anthropic /v1/messages format with streaming + auto-fallback combos. Use when the user wants to ask an LLM, generate code, summarize text, or run prompts through VitonlineRouter.
 ---
 
-# FlagshipRouter — Chat
+# VitonlineRouter — Chat
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Endpoints
 
-- `POST $FLAGSHIPROUTER_URL/v1/chat/completions` — OpenAI format
-- `POST $FLAGSHIPROUTER_URL/v1/messages` — Anthropic format
+- `POST $VITONLINEROUTER_URL/v1/chat/completions` — OpenAI format
+- `POST $VITONLINEROUTER_URL/v1/messages` — Anthropic format
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models | jq '.data[].id'
+curl $VITONLINEROUTER_URL/v1/models | jq '.data[].id'
 # Per-model metadata (contextWindow, params)
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/gpt-4o"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=openai/gpt-4o"
 ```
 
 Combos (e.g. `vip`, `mycodex`) auto-fallback through multiple providers.
@@ -25,8 +25,8 @@ Combos (e.g. `vip`, `mycodex`) auto-fallback through multiple providers.
 ## OpenAI format
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/chat/completions \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/chat/completions \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"openai/gpt-5","messages":[{"role":"user","content":"Hi"}],"stream":false}'
 ```
@@ -35,7 +35,7 @@ JS (OpenAI SDK):
 
 ```js
 import OpenAI from "openai";
-const client = new OpenAI({ baseURL: `${process.env.FLAGSHIPROUTER_URL}/v1`, apiKey: process.env.FLAGSHIPROUTER_KEY });
+const client = new OpenAI({ baseURL: `${process.env.VITONLINEROUTER_URL}/v1`, apiKey: process.env.VITONLINEROUTER_KEY });
 const res = await client.chat.completions.create({
   model: "openai/gpt-5",
   messages: [{ role: "user", content: "Hi" }],
@@ -47,8 +47,8 @@ for await (const chunk of res) process.stdout.write(chunk.choices[0]?.delta?.con
 ## Anthropic format
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/messages \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/messages \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{"model":"cc/claude-opus-4-7","max_tokens":1024,"messages":[{"role":"user","content":"Hi"}]}'

@@ -45,7 +45,7 @@ export default function DroidToolCard({
 
   const getConfigStatus = () => {
     if (!droidStatus?.installed) return null;
-    // Check for any FlagshipRouter model entry (support multi-model: custom:FlagshipRouter-0, custom:FlagshipRouter-1, ...)
+    // Check for any VitonlineRouter model entry (support multi-model: custom:VitonlineRouter-0, custom:VitonlineRouter-1, ...)
     const currentConfig = droidStatus.settings?.customModels?.find(m => m.id?.startsWith(`custom:${BRAND.name}`));
     if (!currentConfig) return "not_configured";
     return matchKnownEndpoint(currentConfig.baseUrl, { tunnelPublicUrl, tailscaleUrl, cloudUrl: cloudEnabled ? CLOUD_URL : null }) ? "configured" : "other";
@@ -91,7 +91,7 @@ export default function DroidToolCard({
       if (existingModels.length > 0) {
         setModelList(existingModels);
       } else {
-        // Legacy: single model stored as custom:FlagshipRouter-0
+        // Legacy: single model stored as custom:VitonlineRouter-0
         const legacy = droidStatus.settings?.customModels?.find(m => m.id === `custom:${BRAND.name}-0`);
         if (legacy?.model) {
           setModelList([legacy.model]);

@@ -1,13 +1,13 @@
 services:
-  flagshiprouter:
+  vitonlinerouter:
     build: .
-    image: flagshiprouter:latest
-    container_name: flagshiprouter
+    image: vitonlinerouter:latest
+    container_name: vitonlinerouter
     restart: always
     ports:
       - "20128:20128"
     volumes:
-      - flagshiprouter-data:/app/data
+      - vitonlinerouter-data:/app/data
     env_file:
       - .env
     environment:
@@ -27,5 +27,5 @@ services:
       - "8787:8787"
 
 volumes:
-  flagshiprouter-data:
-    name: flagshiprouter-data
+  vitonlinerouter-data:
+    name: vitonlinerouter-data

@@ -4,8 +4,8 @@ import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { verifyDashboardPassword } from "@/lib/auth/dashboardSession";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 
-const CLI_TOKEN_HEADER = "x-fr-cli-token";
-const PASSWORD_HEADER = "x-fr-password";
+const CLI_TOKEN_HEADER = "x-vr-cli-token";
+const PASSWORD_HEADER = "x-vr-password";
 
 // CLI token requests are already trusted (local machine); skip password re-auth.
 async function isCliRequest(request) {

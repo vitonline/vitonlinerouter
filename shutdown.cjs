@@ -1,5 +1,5 @@
 // Shared by the HTTP wrapper and bundled application modules.
-const state = globalThis.__flagshipShutdown ??= { tasks: new Map(), installed: false, running: null };
+const state = globalThis.__vitonlineShutdown ??= { tasks: new Map(), installed: false, running: null };
 function registerShutdown(key, run, priority = 0) {
   state.tasks.set(key, { run, priority });
   if (!state.installed) {

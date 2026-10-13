@@ -1,23 +1,23 @@
 ---
-name: flagshiprouter-image
-description: Generate images via FlagshipRouter /v1/images/generations using OpenAI / Gemini Imagen / DALL-E / FLUX / MiniMax / SDWebUI / ComfyUI / Codex models. Use when the user wants to create, generate, draw, or render an image, picture, or text-to-image (txt2img).
+name: vitonlinerouter-image
+description: Generate images via VitonlineRouter /v1/images/generations using OpenAI / Gemini Imagen / DALL-E / FLUX / MiniMax / SDWebUI / ComfyUI / Codex models. Use when the user wants to create, generate, draw, or render an image, picture, or text-to-image (txt2img).
 ---
 
-# FlagshipRouter — Image Generation
+# VitonlineRouter — Image Generation
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models/image | jq '.data[].id'
+curl $VITONLINEROUTER_URL/v1/models/image | jq '.data[].id'
 # Per-model params/options (size enum, quality enum, capabilities like edit)
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/dall-e-3"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=openai/dall-e-3"
 ```
 
 ## Endpoint
 
-`POST $FLAGSHIPROUTER_URL/v1/images/generations`
+`POST $VITONLINEROUTER_URL/v1/images/generations`
 
 | Field | Required | Notes |
 |---|---|---|
@@ -35,8 +35,8 @@ Add query `?response_format=binary` to receive raw image bytes (handy for saving
 Save to file (binary):
 
 ```bash
-curl -X POST "$FLAGSHIPROUTER_URL/v1/images/generations?response_format=binary" \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST "$VITONLINEROUTER_URL/v1/images/generations?response_format=binary" \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"gemini/gemini-3-pro-image-preview","prompt":"watercolor mountains at sunrise","size":"1024x1024"}' \
   --output out.png
@@ -45,9 +45,9 @@ curl -X POST "$FLAGSHIPROUTER_URL/v1/images/generations?response_format=binary" 
 JS (URL response):
 
 ```js
-const r = await fetch(`${process.env.FLAGSHIPROUTER_URL}/v1/images/generations`, {
+const r = await fetch(`${process.env.VITONLINEROUTER_URL}/v1/images/generations`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.FLAGSHIPROUTER_KEY}`, "Content-Type": "application/json" },
+  headers: { "Authorization": `Bearer ${process.env.VITONLINEROUTER_KEY}`, "Content-Type": "application/json" },
   body: JSON.stringify({ model: "gemini/gemini-3-pro-image-preview", prompt: "neon city", size: "1024x1024" }),
 });
 const { data } = await r.json();

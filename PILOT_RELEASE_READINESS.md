@@ -1,4 +1,4 @@
-# FlagshipRouter pilot release readiness
+# VitonlineRouter pilot release readiness
 
 Reviewed 13 October 2026. Deployment target: an isolated, self-hosted installation controlled by one customer administrator. This is not a public multi-tenant service approval.
 

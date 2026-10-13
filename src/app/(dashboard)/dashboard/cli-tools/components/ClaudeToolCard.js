@@ -203,7 +203,7 @@ export default function ClaudeToolCard({
     try {
       const env = { ANTHROPIC_BASE_URL: getEffectiveBaseUrl() };
 
-      // Get key from dropdown, fallback to first key or sk_flagshiprouter for localhost
+      // Get key from dropdown, fallback to first key or sk_vitonlinerouter for localhost
       const keyToUse = selectedApiKey?.trim()
         || (apiKeys?.length > 0 ? apiKeys[0].key : null)
         || (!cloudEnabled ? `sk_${BRAND.modelPrefix}` : null);

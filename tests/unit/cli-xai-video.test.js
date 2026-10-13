@@ -1,7 +1,7 @@
 /**
- * Tests for the `flagshiprouter xai video` CLI command (cli/src/cli/commands/xaiVideo.js)
+ * Tests for the `vitonlinerouter xai video` CLI command (cli/src/cli/commands/xaiVideo.js)
  *
- * Uses a real local HTTP server standing in for the flagshiprouter gateway + video CDN.
+ * Uses a real local HTTP server standing in for the vitonlinerouter gateway + video CDN.
  * No real credentials or upstream calls.
  *
  * Covers:

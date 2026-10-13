@@ -6,7 +6,7 @@ import { localApi } from './lib/local-router-api.mjs';
 const key = (await localApi('keys')).keys.find(k => k.isActive)?.key;
 const base = path.resolve('.pilot-verification'); fs.mkdirSync(base, { recursive: true });
 const root = fs.mkdtempSync(path.join(base, 'cancel-probe-'));
-const executable = 'C:/Users/HUAWEI/AppData/Local/Temp/flagshiprouter-claude-probe-20261013/node_modules/@anthropic-ai/claude-code/bin/claude.exe';
+const executable = 'C:/Users/HUAWEI/AppData/Local/Temp/vitonlinerouter-claude-probe-20261013/node_modules/@anthropic-ai/claude-code/bin/claude.exe';
 const baseline = (await localApi('usage/history')).activeRequests || [];
 const child = spawn(executable, ['-p', '--bare', '--no-session-persistence', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--tools', '', '--model', 'RecommendedModels', 'Write a very long numbered sequence from 1 to 10000, one number per line.'], { cwd: root, windowsHide: true, env: { ...process.env, CLAUDE_CONFIG_DIR: path.join(root, 'config'), ANTHROPIC_API_KEY: key, ANTHROPIC_AUTH_TOKEN: '', ANTHROPIC_BASE_URL: 'http://127.0.0.1:20128', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
 child.stdin.end(); let events = '', observed = false;

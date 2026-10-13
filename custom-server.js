@@ -15,12 +15,12 @@ const MAX_BODY_BYTES = boundedEnv("MAX_REQUEST_BODY_BYTES", 128 * 1024 * 1024, 1
 const H2C_BODY_TIMEOUT_MS = boundedEnv("H2C_BODY_TIMEOUT_MS", 60_000, 60_000);
 const MAX_INFLIGHT_REQUESTS = boundedEnv("MAX_INFLIGHT_REQUESTS", 64, 1024);
 
-// Per-process secret proving x-fr-real-ip was stamped below rather than sent by the client.
+// Per-process secret proving x-vr-real-ip was stamped below rather than sent by the client.
 // A bare `next start` / `next dev` never loads this file, so it cannot produce a matching
-// header even though the env var is inherited by child processes. Named like x-fr-cli-token
+// header even though the env var is inherited by child processes. Named like x-vr-cli-token
 // so the request-detail header sanitizer redacts it too.
 const PEER_TOKEN = crypto.randomBytes(24).toString("hex");
-process.env.FLAGSHIPROUTER_PEER_TOKEN = PEER_TOKEN;
+process.env.VITONLINEROUTER_PEER_TOKEN = PEER_TOKEN;
 
 let backgroundRefreshStarted = false;
 let activeRequests = 0;
@@ -88,13 +88,13 @@ http.createServer = (...args) => {
     const candidate = xff ? String(xff).split(",").at(-1).trim() : xRealIp;
     const proxyIp = net.isIP(candidate || "") ? candidate : "";
     const ip = isLoopbackProxy && proxyIp ? proxyIp : socketIp;
-    delete req.headers["x-fr-real-ip"];
+    delete req.headers["x-vr-real-ip"];
     delete req.headers["x-forwarded-for"];
-    delete req.headers["x-fr-via-proxy"];
-    delete req.headers["x-fr-peer-token"];
-    req.headers["x-fr-real-ip"] = ip;
-    req.headers["x-fr-peer-token"] = PEER_TOKEN;
-    if (viaProxy) req.headers["x-fr-via-proxy"] = "1";
+    delete req.headers["x-vr-via-proxy"];
+    delete req.headers["x-vr-peer-token"];
+    req.headers["x-vr-real-ip"] = ip;
+    req.headers["x-vr-peer-token"] = PEER_TOKEN;
+    if (viaProxy) req.headers["x-vr-via-proxy"] = "1";
     return handler(req, res);
   };
   const server = origCreate(...rest, wrapped);

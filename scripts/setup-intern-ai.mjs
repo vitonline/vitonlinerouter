@@ -16,10 +16,10 @@ try {
 }
 const modelIds=(data.data||[]).map(m=>m.id).filter(id=>typeof id==='string');
 console.log(JSON.stringify({listingStatus:listing.status,modelIds}));
-const dir=path.join(process.env.APPDATA,'flagshiprouter');
+const dir=path.join(process.env.APPDATA,'vitonlinerouter');
 const token=crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,'machine-id'),'utf8').trim()+'fr-cli-auth'+fs.readFileSync(path.join(dir,'auth/cli-secret'),'utf8').trim()).digest('hex').slice(0,16);
 async function api(route,body,method) {
- const response=await fetch(`http://127.0.0.1:20128/api/${route}`,{headers:{'x-fr-cli-token':token,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{}),...(method?{method}:{}),signal:AbortSignal.timeout(150000)});
+ const response=await fetch(`http://127.0.0.1:20128/api/${route}`,{headers:{'x-vr-cli-token':token,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{}),...(method?{method}:{}),signal:AbortSignal.timeout(150000)});
  if(!response.ok) throw new Error(`${route}: HTTP ${response.status}: ${JSON.stringify(redactSecrets(await response.json()))}`);
  return response.json();
 }

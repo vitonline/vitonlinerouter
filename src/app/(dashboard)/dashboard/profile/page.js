@@ -666,7 +666,7 @@ export default function ProfilePage() {
     setDbStatus({ type: "", message: "" });
     try {
       const res = await fetch("/api/settings/database", {
-        headers: { "x-fr-password": password },
+        headers: { "x-vr-password": password },
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

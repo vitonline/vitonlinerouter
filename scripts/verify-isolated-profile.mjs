@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { verifyIsolatedAccounting } from './lib/verify-isolated-accounting.mjs';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flagship-isolated-profile-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vitonline-isolated-profile-'));
 const app = path.resolve('cli/app'), data = path.join(root, 'data');
 const password = crypto.randomBytes(24).toString('hex');
 const base = 'http://127.0.0.1:20129';
@@ -28,7 +28,7 @@ async function stop() {
   const exit = new Promise(resolve => child.once('exit', resolve)); child.kill(); await exit;
 }
 async function api(route, method = 'GET', body) {
-  const response = await fetch(`${base}/api/${route}`, { method, headers: { Cookie: cookie || '', 'Content-Type': 'application/json', 'x-fr-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const response = await fetch(`${base}/api/${route}`, { method, headers: { Cookie: cookie || '', 'Content-Type': 'application/json', 'x-vr-password': password }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const parsed = await response.json(); assert.ok(response.ok, `${route}: HTTP ${response.status}`); return parsed;
 }
 try {
@@ -50,5 +50,5 @@ try {
   console.log(JSON.stringify(report));
 } finally {
   await stop(); fs.writeFileSync('isolated-profile-verification.json', JSON.stringify(report, null, 2));
-  if (path.resolve(root).startsWith(path.join(os.tmpdir(), 'flagship-isolated-profile-'))) fs.rmSync(root, { recursive: true, force: true, maxRetries: 4, retryDelay: 500 });
+  if (path.resolve(root).startsWith(path.join(os.tmpdir(), 'vitonline-isolated-profile-'))) fs.rmSync(root, { recursive: true, force: true, maxRetries: 4, retryDelay: 500 });
 }

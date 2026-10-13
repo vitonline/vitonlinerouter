@@ -68,7 +68,7 @@ const { ensureSqliteRuntime, buildEnvWithRuntime } = require("./hooks/sqliteRunt
 const { ensureTrayRuntime } = require("./hooks/trayRuntime");
 const args = process.argv.slice(2);
 
-// Subcommands (`flagshiprouter xai video …`) run against an already-running gateway
+// Subcommands (`vitonlinerouter xai video …`) run against an already-running gateway
 // and bypass the launcher flow (no runtime self-heal, no server spawn).
 if (args[0] === "xai" && args[1] === "video") {
   const { run } = require("./src/cli/commands/xaiVideo");
@@ -81,7 +81,7 @@ if (args[0] === "xai" && args[1] === "video") {
   return;
 }
 
-// Self-heal SQLite runtime deps (sql.js + better-sqlite3) into ~/.flagshiprouter/runtime
+// Self-heal SQLite runtime deps (sql.js + better-sqlite3) into ~/.vitonlinerouter/runtime
 // so the server can resolve them via NODE_PATH. Best-effort — sql.js is required,
 // better-sqlite3 is optional. Logs to stderr only on failure.
 try { ensureSqliteRuntime({ silent: true }); } catch {}
@@ -110,7 +110,7 @@ function getLanIp() {
 function getDisplayHost() {
   return host === DEFAULT_HOST ? "localhost" : host;
 }
-// Identifiers for killAllAppProcesses - only kill flagshiprouter specifically
+// Identifiers for killAllAppProcesses - only kill vitonlinerouter specifically
 const PROCESS_IDENTIFIERS = [
   BRAND.slug  // Only package name - avoid killing other apps
 ];
@@ -246,7 +246,7 @@ function killCloudflaredByAppPort(appPort) {
   return pids;
 }
 
-// Kill all flagshiprouter processes
+// Kill all vitonlinerouter processes
 function killAllAppProcesses(appPort) {
   return new Promise((resolve) => {
     try {
@@ -273,8 +273,8 @@ function killAllAppProcesses(appPort) {
           });
           const lines = output.split("\n").slice(1).filter(l => l.trim());
           lines.forEach(line => {
-            // Whitelist: real node process running flagshiprouter/cli.js, or next-server.
-            // Avoids killing editors/grep/strace/cursor that just have "flagshiprouter" in cmdline.
+            // Whitelist: real node process running vitonlinerouter/cli.js, or next-server.
+            // Avoids killing editors/grep/strace/cursor that just have "vitonlinerouter" in cmdline.
             const cmd = line.toLowerCase();
             const isAppProcess =
               (cmd.includes("node") && cmd.includes(BRAND.slug) && (cmd.includes("cli.js") || cmd.includes(`\\${BRAND.slug}`) || cmd.includes(`/${BRAND.slug}`)))
@@ -299,8 +299,8 @@ function killAllAppProcesses(appPort) {
           const lines = output.split('\n');
 
           lines.forEach(line => {
-            // Whitelist: real node process running flagshiprouter/cli.js, or next-server.
-            // Avoids killing grep/strace/editors/cursor that incidentally match "flagshiprouter".
+            // Whitelist: real node process running vitonlinerouter/cli.js, or next-server.
+            // Avoids killing grep/strace/editors/cursor that incidentally match "vitonlinerouter".
             const cmd = line.toLowerCase();
             const isAppProcess =
               (cmd.includes("node") && cmd.includes(BRAND.slug) && (cmd.includes("cli.js") || cmd.includes(`/${BRAND.slug}`)))

@@ -88,7 +88,7 @@ export async function GET() {
   }
 }
 
-// POST - Apply FlagshipRouter as openai-compatible provider (multi-model support)
+// POST - Apply VitonlineRouter as openai-compatible provider (multi-model support)
 export async function POST(request) {
   try {
     const { baseUrl, apiKey, model, models, activeModel, subagentModel } = await request.json();
@@ -119,7 +119,7 @@ export async function POST(request) {
     // Ensure provider object
     if (!config.provider) config.provider = {};
 
-    // Preserve any existing flagshiprouter provider entry and its models
+    // Preserve any existing vitonlinerouter provider entry and its models
     const existingProvider = config.provider[BRAND.modelPrefix] || { npm: "@ai-sdk/openai-compatible", options: {}, models: {} };
 
     // Merge options (overwrite baseURL/apiKey)
@@ -209,7 +209,7 @@ export async function PATCH(request) {
   }
 }
 
-// DELETE - Remove FlagshipRouter provider or specific models from config
+// DELETE - Remove VitonlineRouter provider or specific models from config
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -241,7 +241,7 @@ export async function DELETE(request) {
         config.model = `${BRAND.modelPrefix}/${remainingModels[0]}`;
       }
     } else {
-      // No specific model - remove entire flagshiprouter provider
+      // No specific model - remove entire vitonlinerouter provider
       if (config.provider) delete config.provider[BRAND.modelPrefix];
       if (config.model?.startsWith(`${BRAND.modelPrefix}/`)) delete config.model;
     }

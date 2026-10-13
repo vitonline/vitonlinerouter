@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
-const dir = path.join(process.env.APPDATA, 'flagshiprouter');
+const dir = path.join(process.env.APPDATA, 'vitonlinerouter');
 const token = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'machine-id'), 'utf8').trim() + 'fr-cli-auth' + fs.readFileSync(path.join(dir, 'auth/cli-secret'), 'utf8').trim()).digest('hex').slice(0, 16);
 async function api(route, method = 'GET') {
-  const response = await fetch(`http://127.0.0.1:20128/api/${route}`, { method, headers: { 'x-fr-cli-token': token }, signal: AbortSignal.timeout(90000) });
+  const response = await fetch(`http://127.0.0.1:20128/api/${route}`, { method, headers: { 'x-vr-cli-token': token }, signal: AbortSignal.timeout(90000) });
   assert.ok(response.ok, `${route}: HTTP ${response.status}`);
   return response.json();
 }

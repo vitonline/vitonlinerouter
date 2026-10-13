@@ -45,8 +45,8 @@ function hasSystray() {
 // On Windows it was an AV false-positive risk; on macOS/Linux its bundled
 // binary is broken on modern OS versions.
 function cleanupLegacySystray({ silent = false } = {}) {
-  // 1) Runtime dir: ~/.flagshiprouter/runtime/node_modules/systray (or %APPDATA% on Win)
-  // 2) npm global nested: <npm_prefix>/node_modules/flagshiprouter/node_modules/systray
+  // 1) Runtime dir: ~/.vitonlinerouter/runtime/node_modules/systray (or %APPDATA% on Win)
+  // 2) npm global nested: <npm_prefix>/node_modules/vitonlinerouter/node_modules/systray
   //    __dirname here = <pkg root>/hooks → up 1 = pkg root
   const targets = [
     path.join(getRuntimeNodeModules(), LEGACY_SYSTRAY_PKG),
@@ -127,7 +127,7 @@ function arm64AttemptMarker() {
   return path.join(getRuntimeDir(), ".tray-arm64-attempt");
 }
 
-// ensureTrayRuntime runs synchronously on every `flagshiprouter` start (cli.js), so a
+// ensureTrayRuntime runs synchronously on every `vitonlinerouter` start (cli.js), so a
 // failed download must not re-block the next launch. Retry at most daily.
 function recentlyAttemptedArm64() {
   try {
@@ -144,8 +144,8 @@ function markArm64Attempt() {
 
 // Cleared on success so the cooldown only ever throttles *failures*. Without
 // this, anything that restores systray2's x86_64 binary later — notably a
-// globally installed flagshiprouter older than this change, which shares the same
-// ~/.flagshiprouter/runtime — would leave the user waiting out the cooldown.
+// globally installed vitonlinerouter older than this change, which shares the same
+// ~/.vitonlinerouter/runtime — would leave the user waiting out the cooldown.
 function clearArm64Attempt() {
   try { fs.rmSync(arm64AttemptMarker(), { force: true }); } catch {}
 }

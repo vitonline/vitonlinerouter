@@ -1,4 +1,4 @@
-# FlagshipRouter Embeddings Tests
+# VitonlineRouter Embeddings Tests
 
 Unit tests for the `/v1/embeddings` endpoint implementation.
 

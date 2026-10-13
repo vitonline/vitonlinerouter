@@ -57,13 +57,13 @@ const readSettings = async () => {
   }
 };
 
-// Check if settings has FlagshipRouter config
+// Check if settings has VitonlineRouter config
 const hasRouterConfig = (settings) => {
   if (!settings || !settings.models || !settings.models.providers) return false;
   return !!settings.models.providers[BRAND.modelPrefix];
 };
 
-// Read per-agent models.json and return current model id (without "flagshiprouter/" prefix)
+// Read per-agent models.json and return current model id (without "vitonlinerouter/" prefix)
 const readAgentModel = async (agentDir) => {
   try {
     const modelsPath = path.join(agentDir, "models.json");
@@ -135,7 +135,7 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
-// POST - Update FlagshipRouter settings (merge with existing settings)
+// POST - Update VitonlineRouter settings (merge with existing settings)
 export async function POST(request) {
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
@@ -166,7 +166,7 @@ export async function POST(request) {
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     const fullModelId = `${BRAND.modelPrefix}/${model}`;
 
-    // Remove all old flagshiprouter/* entries from agents.defaults.models
+    // Remove all old vitonlinerouter/* entries from agents.defaults.models
     Object.keys(settings.agents.defaults.models)
       .filter((k) => k.startsWith(`${BRAND.modelPrefix}/`))
       .forEach((k) => { delete settings.agents.defaults.models[k]; });
@@ -178,12 +178,12 @@ export async function POST(request) {
     const allModelIds = new Set([model]);
     Object.values(agentModels).forEach((m) => { if (m) allModelIds.add(m); });
 
-    // Add fresh flagshiprouter models to allowlist
+    // Add fresh vitonlinerouter models to allowlist
     allModelIds.forEach((m) => {
       settings.agents.defaults.models[`${BRAND.modelPrefix}/${m}`] = {};
     });
 
-    // Remove old flagshiprouter model from each agent in agents.list. The
+    // Remove old vitonlinerouter model from each agent in agents.list. The
     // model field may be a plain string or `{ primary, fallbacks }`.
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
@@ -195,7 +195,7 @@ export async function POST(request) {
       });
     }
 
-    // Update models.providers.flagshiprouter with all models
+    // Update models.providers.vitonlinerouter with all models
     settings.models.providers[BRAND.modelPrefix] = {
       baseUrl: normalizedBaseUrl,
       apiKey: apiKey || "your_api_key",
@@ -235,7 +235,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove FlagshipRouter settings only (keep other settings)
+// DELETE - Remove VitonlineRouter settings only (keep other settings)
 export async function DELETE() {
   try {
     const settingsPath = getOpenClawSettingsPath();
@@ -255,7 +255,7 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove FlagshipRouter from models.providers
+    // Remove VitonlineRouter from models.providers
     if (settings.models && settings.models.providers) {
       delete settings.models.providers[BRAND.modelPrefix];
       
@@ -265,7 +265,7 @@ export async function DELETE() {
       }
     }
 
-    // Remove flagshiprouter models from agents.defaults.models allowlist
+    // Remove vitonlinerouter models from agents.defaults.models allowlist
     if (settings.agents?.defaults?.models) {
       const keysToRemove = Object.keys(settings.agents.defaults.models).filter((k) => k.startsWith(`${BRAND.modelPrefix}/`));
       for (const key of keysToRemove) {
@@ -276,7 +276,7 @@ export async function DELETE() {
       }
     }
 
-    // Reset agents.defaults.model.primary if it uses flagshiprouter
+    // Reset agents.defaults.model.primary if it uses vitonlinerouter
     if (settings.agents?.defaults?.model?.primary?.startsWith(`${BRAND.modelPrefix}/`)) {
       delete settings.agents.defaults.model.primary;
     }

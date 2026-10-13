@@ -68,9 +68,9 @@ describe("AUDIT-003: Proxy URL validation", () => {
     delete process.env.HTTP_PROXY;
     delete process.env.HTTPS_PROXY;
     delete process.env.ALL_PROXY;
-    delete process.env.FLAGSHIPROUTER_PROXY_MANAGED;
-    delete process.env.FLAGSHIPROUTER_PROXY_URL;
-    delete process.env.FLAGSHIPROUTER_NO_PROXY;
+    delete process.env.VITONLINEROUTER_PROXY_MANAGED;
+    delete process.env.VITONLINEROUTER_PROXY_URL;
+    delete process.env.VITONLINEROUTER_NO_PROXY;
     delete process.env.NO_PROXY;
   });
 

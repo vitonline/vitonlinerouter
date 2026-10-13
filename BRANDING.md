@@ -1,6 +1,6 @@
-# FlagshipRouter brand
+# VitonlineRouter brand
 
-Product name: FlagshipRouter. Tagline: Reliable AI routing for your coding tools.
+Product name: VitonlineRouter. Tagline: Reliable AI routing for your coding tools.
 
 Positioning: a self-hosted gateway for customer-owned AI accounts, with a small tested model pool, clear diagnostics, bounded fallback and optional setup/support.
 

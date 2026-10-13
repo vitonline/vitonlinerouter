@@ -1,25 +1,25 @@
 ---
-name: flagshiprouter-stt
-description: Speech-to-text via FlagshipRouter /v1/audio/transcriptions using OpenAI Whisper / Groq / Gemini / Deepgram / AssemblyAI / NVIDIA / HuggingFace models. Use when the user wants to transcribe audio, convert speech to text, or get subtitles from audio files.
+name: vitonlinerouter-stt
+description: Speech-to-text via VitonlineRouter /v1/audio/transcriptions using OpenAI Whisper / Groq / Gemini / Deepgram / AssemblyAI / NVIDIA / HuggingFace models. Use when the user wants to transcribe audio, convert speech to text, or get subtitles from audio files.
 ---
 
-# FlagshipRouter — Speech-to-Text
+# VitonlineRouter — Speech-to-Text
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models/stt | jq '.data[].id'
+curl $VITONLINEROUTER_URL/v1/models/stt | jq '.data[].id'
 # Per-model params (language, response_format, prompt, temperature support)
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/whisper-1"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=openai/whisper-1"
 ```
 
 `model` = STT model ID (e.g. `openai/whisper-1`, `groq/whisper-large-v3`, `deepgram/nova-3`, `gemini/gemini-2.5-flash`).
 
 ## Endpoint
 
-`POST $FLAGSHIPROUTER_URL/v1/audio/transcriptions` (OpenAI Whisper compatible, `multipart/form-data`)
+`POST $VITONLINEROUTER_URL/v1/audio/transcriptions` (OpenAI Whisper compatible, `multipart/form-data`)
 
 | Field | Required | Notes |
 |---|---|---|
@@ -33,8 +33,8 @@ curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/whisper-1"
 ## Examples
 
 ```bash
-curl -X POST "$FLAGSHIPROUTER_URL/v1/audio/transcriptions" \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST "$VITONLINEROUTER_URL/v1/audio/transcriptions" \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -F "model=openai/whisper-1" \
   -F "file=@audio.mp3" \
   -F "language=vi"
@@ -47,9 +47,9 @@ import { createReadStream } from "node:fs";
 const form = new FormData();
 form.append("model", "groq/whisper-large-v3-turbo");
 form.append("file", new Blob([await (await import("node:fs/promises")).readFile("audio.mp3")]), "audio.mp3");
-const r = await fetch(`${process.env.FLAGSHIPROUTER_URL}/v1/audio/transcriptions`, {
+const r = await fetch(`${process.env.VITONLINEROUTER_URL}/v1/audio/transcriptions`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.FLAGSHIPROUTER_KEY}` },
+  headers: { "Authorization": `Bearer ${process.env.VITONLINEROUTER_KEY}` },
   body: form,
 });
 const { text } = await r.json();

@@ -1,9 +1,9 @@
 {
-  "name": "flagshiprouter-tests",
+  "name": "vitonlinerouter-tests",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Unit tests for FlagshipRouter",
+  "description": "Unit tests for VitonlineRouter",
   "scripts": {
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest --reporter=verbose"

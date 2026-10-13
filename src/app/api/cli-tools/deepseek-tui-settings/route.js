@@ -52,7 +52,7 @@ const parseToml = (content) => {
     return result;
 };
 
-// Build TOML config for FlagshipRouter (openai provider mode)
+// Build TOML config for VitonlineRouter (openai provider mode)
 const buildRouterConfig = (baseUrl, apiKey, model) => {
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     return `provider = "openai"
@@ -93,7 +93,7 @@ const readConfigToml = async () => {
     }
 };
 
-// Detect FlagshipRouter by checking if provider is "openai" and base_url points to localhost/127.0.0.1
+// Detect VitonlineRouter by checking if provider is "openai" and base_url points to localhost/127.0.0.1
 const hasRouterConfig = (config) => {
     if (!config) return false;
     const provider = config.provider;

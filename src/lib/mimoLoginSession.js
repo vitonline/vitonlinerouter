@@ -27,7 +27,7 @@ const SSO_UA = "MiClaw/1.0";
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// Paths that belong to the flagshiprouter app itself — never proxy these upstream,
+// Paths that belong to the vitonlinerouter app itself — never proxy these upstream,
 // even while a login session is active. Everything else is fair game: the
 // login SPA hits evolving endpoints (/pass2/config, /v3/...), so a static
 // allowlist rots fast. (Edge-safe: plain strings only.)
@@ -537,7 +537,7 @@ function browserCookieHeader(req) {
 const STRIP_UPSTREAM_HEADERS = new Set([
   "host", "cookie", "connection", "content-length", "transfer-encoding",
   "keep-alive", "upgrade", "expect", "proxy-connection",
-  // Credentials for flagshiprouter itself — must never reach a third-party upstream.
+  // Credentials for vitonlinerouter itself — must never reach a third-party upstream.
   "authorization", "proxy-authorization",
 ]);
 

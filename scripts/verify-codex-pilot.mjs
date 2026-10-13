@@ -9,7 +9,7 @@ const privateRoot = path.resolve('.pilot-verification'); fs.mkdirSync(privateRoo
 const root = fs.mkdtempSync(path.join(privateRoot, 'codex-probe-'));
 const workspace = path.join(root, 'workspace'), home = path.join(root, 'codex');
 fs.mkdirSync(workspace); fs.mkdirSync(home);
-const markerValue = `FLAGSHIP_PILOT_${randomBytes(8).toString('hex')}`;
+const markerValue = `VITONLINE_PILOT_${randomBytes(8).toString('hex')}`;
 fs.writeFileSync(path.join(workspace, 'marker.txt'), markerValue);
 fs.writeFileSync(path.join(workspace, 'schema.json'), JSON.stringify({ type: 'object', properties: { marker: { type: 'string' } }, required: ['marker'], additionalProperties: false }));
 const key = (await localApi('keys')).keys.find(k => k.isActive)?.key;
@@ -35,12 +35,12 @@ const proxy = http.createServer(async (request, response) => {
 });
 await new Promise(resolve => proxy.listen(20130, '127.0.0.1', resolve));
 const model = process.env.PILOT_MODEL || 'RecommendedModels';
-fs.writeFileSync(path.join(home, 'config.toml'), `model_provider = "flagship_probe"\nmodel = ${JSON.stringify(model)}\n[model_providers.flagship_probe]\nname = "FlagshipRouter"\nbase_url = "http://127.0.0.1:20130/v1"\nwire_api = "responses"\nenv_key = "FLAGSHIP_PROBE_KEY"\n`);
+fs.writeFileSync(path.join(home, 'config.toml'), `model_provider = "vitonline_probe"\nmodel = ${JSON.stringify(model)}\n[model_providers.vitonline_probe]\nname = "VitonlineRouter"\nbase_url = "http://127.0.0.1:20130/v1"\nwire_api = "responses"\nenv_key = "VITONLINE_PROBE_KEY"\n`);
 const executable = process.env.LOCAL_CODEX_BINARY;
 if (!executable) throw new Error('Set LOCAL_CODEX_BINARY to the installed Codex executable');
 const output = path.join(root, 'last.json');
 const args = ['exec', '--ephemeral', '--skip-git-repo-check', '--json', '--sandbox', 'workspace-write', '-c', 'approval_policy="never"', '-c', 'features.multi_agent=false', '-C', workspace, ...(process.env.PILOT_NO_OUTPUT_SCHEMA ? [] : ['--output-schema', path.join(workspace, 'schema.json')]), '-o', output, 'Use exec_command to read marker.txt with PowerShell Get-Content. Do not delegate or use subagents. Do not modify any files. Your final answer must be a JSON object with a marker field containing the exact marker from that file.'];
-const child = spawn(executable, args, { env: { ...process.env, CODEX_HOME: home, FLAGSHIP_PROBE_KEY: key }, windowsHide: true });
+const child = spawn(executable, args, { env: { ...process.env, CODEX_HOME: home, VITONLINE_PROBE_KEY: key }, windowsHide: true });
 child.stdin.end();
 let stdout = '', stderr = '';
 child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; });

@@ -4,18 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-FlagshipRouter (`flagshiprouter-app`) — a local AI routing gateway + Next.js dashboard. It exposes one OpenAI-compatible endpoint (`/v1/*`) and routes traffic to **free** upstream providers with format translation, model-combo fallback, multi-account fallback, OAuth/API-key credential management, token refresh and usage tracking.
+VitonlineRouter (`vitonlinerouter-app`) — a local AI routing gateway + Next.js dashboard. It exposes one OpenAI-compatible endpoint (`/v1/*`) and routes traffic to **free** upstream providers with format translation, model-combo fallback, multi-account fallback, OAuth/API-key credential management, token refresh and usage tracking.
 
 Two published artifacts live in this one repo:
-- The **dashboard + gateway** (root `package.json`, `flagshiprouter-app`) — the Next.js server that does the actual routing.
-- The **CLI launcher** (`cli/`, npm package `flagshiprouter`) — a separate package that starts the server, opens the browser UI and manages the tray. It has its own `package.json`, version, and build.
+- The **dashboard + gateway** (root `package.json`, `vitonlinerouter-app`) — the Next.js server that does the actual routing.
+- The **CLI launcher** (`cli/`, npm package `vitonlinerouter`) — a separate package that starts the server, opens the browser UI and manages the tray. It has its own `package.json`, version, and build.
 
 ## Brand, provider policy and model renames — `brand.json` is the single source
 - Never hardcode the product name, slug, data-dir name, CLI-tool provider key or repo URL. ESM code imports `BRAND` from `open-sse/config/brand.js`; CommonJS reads `cli/src/brand.js` (CLI) or `require("…/brand.json")` (src/mitm, updater). Locale files use `{{brand}}` / `{{slug}}` placeholders filled by `src/i18n/runtime.js`.
 - `npm run brand:sync` (scripts/brand-sync.mjs) stamps brand.json into both package.json files; `cli/scripts/build-cli.js` runs it and ships a copy of brand.json.
 - Free-only policy: `open-sse/providers/policy.js` (`isProviderAllowed`, `ALLOWED_REGISTRY`). Enforced in `src/shared/constants/providers.js` (dashboard + management APIs), `createProviderConnection` (connection store), `getProviderCredentials` and the chat handler (routing). The engine registry itself stays complete.
 - Model renames: `open-sse/services/modelRenames.js`. `getModelInfo` resolves public ids to targets; `handleSingleModelChat` wraps the response with `presentResponseAsModel`; `/v1/models` and `/api/models/catalog` list renames and hide targets.
-- Internal plumbing names: `x-fr-*` headers (custom-server ↔ app), `FLAGSHIPROUTER_*` env vars.
+- Internal plumbing names: `x-vr-*` headers (custom-server ↔ app), `VITONLINEROUTER_*` env vars.
 - UI: new shell in `src/shared/components/Sidebar.js` / `Header.js` / `BrandMark.js`, tokens in `src/app/globals.css`; the Models screen (`src/app/(dashboard)/dashboard/models/page.js`) replaces the provider list (`/dashboard/providers` redirects unless custom endpoints are enabled).
 - Tests: `tests/setup/providerPolicy.js` disables the free-only policy for upstream engine tests; `tests/unit/brand-policy.test.js` covers the brand layer with the real policy.
 
@@ -90,7 +90,7 @@ Two authoritative docs already exist — read them before working in these areas
 ### Persistence — IMPORTANT (ARCHITECTURE.md is stale here)
 State is **no longer `db.json`**. It's a SQLite layer under `src/lib/db/` with an adapter fallback chain (`driver.js`): `bun:sqlite` → `better-sqlite3` (optional native dep) → `node:sqlite` (Node ≥22.5) → `sql.js` (pure-JS fallback, always works). `better-sqlite3` is deliberately in `optionalDependencies` so install never fails without build tools.
 - `src/lib/localDb.js` is a **backward-compat shim** re-exporting `src/lib/db/index.js`. New code should import from `@/lib/db/index.js`; per-entity logic lives in `src/lib/db/repos/*`. Schema/migrations in `src/lib/db/migrations/`.
-- DB file location resolves via `src/lib/db/paths.js` (`DATA_DIR`, else `~/.flagshiprouter/`).
+- DB file location resolves via `src/lib/db/paths.js` (`DATA_DIR`, else `~/.vitonlinerouter/`).
 - Usage and request details use the SQLite database under `DATA_DIR`; legacy JSON files are migration inputs.
 
 ### RTK token saver (`open-sse/rtk/`)

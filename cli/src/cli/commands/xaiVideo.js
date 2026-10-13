@@ -1,6 +1,6 @@
 /**
- * `flagshiprouter xai video` — generate a Grok Imagine video through the local
- * flagshiprouter gateway and save the result as an MP4 file.
+ * `vitonlinerouter xai video` — generate a Grok Imagine video through the local
+ * vitonlinerouter gateway and save the result as an MP4 file.
  *
  * Flow: POST /v1/videos/generations → poll GET /v1/videos/{request_id}
  * until done/failed/timeout → download video.url → atomic rename.
@@ -40,7 +40,7 @@ Options:
   --timeout <seconds>     Max wait for the job (default: ${DEFAULT_TIMEOUT_SEC})
   --port <port>           Gateway port (default: ${DEFAULT_PORT})
   --host <host>           Gateway host (default: ${DEFAULT_HOST})
-  --api-key <key>         ${BRAND.slug} API key (or env FLAGSHIPROUTER_API_KEY)
+  --api-key <key>         ${BRAND.slug} API key (or env VITONLINEROUTER_API_KEY)
   -h, --help              Show this help
 `;
 
@@ -55,7 +55,7 @@ function parseArgs(argv) {
     timeoutSec: DEFAULT_TIMEOUT_SEC,
     port: DEFAULT_PORT,
     host: DEFAULT_HOST,
-    apiKey: process.env.FLAGSHIPROUTER_API_KEY || null,
+    apiKey: process.env.VITONLINEROUTER_API_KEY || null,
     pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
   };
   for (let i = 0; i < argv.length; i++) {

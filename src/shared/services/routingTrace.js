@@ -20,7 +20,7 @@ export async function traceComboRouting(run, options) {
     attempts.push(attempt);
     try {
       const result = await handler(body, model, context);
-      const actual = result.headers.get("x-fr-upstream-model") || result.headers.get("x-fr-selected-model") || model;
+      const actual = result.headers.get("x-vr-upstream-model") || result.headers.get("x-vr-selected-model") || model;
       Object.assign(attempt, { model: actual, provider: actual.split("/")[0], status: result.status, latencyMs: Date.now() - at });
       return result;
     } catch (error) {
@@ -59,8 +59,8 @@ export async function traceComboRouting(run, options) {
   }
   await persistTrace(record);
   const headers = new Headers(response.headers);
-  headers.set("x-fr-route-id", id); headers.set("x-fr-model-attempts", String(attempts.length));
-  headers.set("x-fr-routing-ms", String(record.latencyMs));
-  if (selected) headers.set("x-fr-selected-model", selected);
+  headers.set("x-vr-route-id", id); headers.set("x-vr-model-attempts", String(attempts.length));
+  headers.set("x-vr-routing-ms", String(record.latencyMs));
+  if (selected) headers.set("x-vr-selected-model", selected);
   return new Response(responseBody, { status: response.status, statusText: response.statusText, headers });
 }

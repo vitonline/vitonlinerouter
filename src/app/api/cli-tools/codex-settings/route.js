@@ -74,7 +74,7 @@ const readConfig = async () => {
   }
 };
 
-// Check if config has FlagshipRouter settings
+// Check if config has VitonlineRouter settings
 const hasRouterConfig = (config) => {
   if (!config) return false;
   return config.includes(`model_provider = "${BRAND.modelPrefix}"`) || config.includes(`[model_providers.${BRAND.modelPrefix}]`);
@@ -107,7 +107,7 @@ export async function GET() {
   }
 }
 
-// POST - Update FlagshipRouter settings (merge with existing config)
+// POST - Update VitonlineRouter settings (merge with existing config)
 export async function POST(request) {
   try {
     const { baseUrl, apiKey, model, subagentModel } = await request.json();
@@ -129,11 +129,11 @@ export async function POST(request) {
       parsed = parsedToWritable(parseTOML(existingConfig));
     } catch { /* No existing config */ }
 
-    // Update only FlagshipRouter related fields (api_key goes to auth.json, not config.toml)
+    // Update only VitonlineRouter related fields (api_key goes to auth.json, not config.toml)
     parsed.model = model;
     parsed.model_provider = BRAND.modelPrefix;
 
-    // Update or create flagshiprouter provider section (no api_key - Codex reads from auth.json)
+    // Update or create vitonlinerouter provider section (no api_key - Codex reads from auth.json)
     // Ensure /v1 suffix is added only once
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     // Custom providers ignore auth.json - the key must travel as a static header
@@ -163,7 +163,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove FlagshipRouter settings only (keep other settings)
+// DELETE - Remove VitonlineRouter settings only (keep other settings)
 export async function DELETE() {
   try {
     const configPath = getCodexConfigPath();
@@ -183,13 +183,13 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove FlagshipRouter related root fields only if they point to flagshiprouter
+    // Remove VitonlineRouter related root fields only if they point to vitonlinerouter
     if (parsed.model_provider === BRAND.modelPrefix) {
       delete parsed.model;
       delete parsed.model_provider;
     }
 
-    // Remove flagshiprouter provider section
+    // Remove vitonlinerouter provider section
     deleteNestedSection(parsed, `model_providers.${BRAND.modelPrefix}`);
 
     // Remove subagent configuration (both the current key and the legacy role form)

@@ -7,7 +7,7 @@ let tempDir;
 let db;
 
 beforeEach(async () => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "flagshiprouter-api-key-"));
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "vitonlinerouter-api-key-"));
   process.env.DATA_DIR = tempDir;
   vi.resetModules();
   db = await import("@/lib/db/index.js");

@@ -1,9 +1,9 @@
-# FlagshipRouter — Deep Code Audit Report
+# VitonlineRouter — Deep Code Audit Report
 
 **Auditor role:** Senior software architect (code correctness, security, reliability)
 **Date:** 13 October 2026
-**Repository:** `C:/Users/HUAWEI/FlagshipRouter`
-**Revision audited:** working tree as of 13 Oct 2026 (root `flagshiprouter-app` v1.0.0 + `cli/` launcher)
+**Repository:** `C:/Users/HUAWEI/VitonlineRouter`
+**Revision audited:** working tree as of 13 Oct 2026 (root `vitonlinerouter-app` v1.0.0 + `cli/` launcher)
 **Scope:** ~35,000 lines of first-party JavaScript across `custom-server.js`, `src/`, `open-sse/`, `cli/src/`, `scripts/`
 **Method:** six parallel specialist passes with a strict evidence standard (every finding must cite `file:line`, quote the code, state a concrete failure scenario, and be re-verified against the current file before reporting). The seven most severe findings were independently re-checked by the lead auditor by reading the code directly.
 **Findings:** **1 Critical · 24 High · 17 Medium · 25 Low = 67 total**
@@ -12,7 +12,7 @@
 
 ## 1. Executive summary
 
-FlagshipRouter is a well-structured codebase — the provider-agnostic engine boundary (`open-sse/`) is real, the translator registration is complete, the API-key auth path is fundamentally sound (exact SQL match, no empty-key fallback, unspoofable peer identity in production), and several subsystems (the kiro EventStream parser, the SSRF guard module, the sql.js adapter's transaction discipline) are genuinely well built. The audit found **no systemic "this project is broken" defect** — the failures are concentrated in *error paths*, *timeouts*, *crash recovery*, and *trust boundaries*, which is a very fixable profile.
+VitonlineRouter is a well-structured codebase — the provider-agnostic engine boundary (`open-sse/`) is real, the translator registration is complete, the API-key auth path is fundamentally sound (exact SQL match, no empty-key fallback, unspoofable peer identity in production), and several subsystems (the kiro EventStream parser, the SSRF guard module, the sql.js adapter's transaction discipline) are genuinely well built. The audit found **no systemic "this project is broken" defect** — the failures are concentrated in *error paths*, *timeouts*, *crash recovery*, and *trust boundaries*, which is a very fixable profile.
 
 That said, the risk profile is dominated by three things:
 
@@ -22,7 +22,7 @@ That said, the risk profile is dominated by three things:
 
 3. **Error paths that convert a transient upstream blip into an outage.** A failed token refresh is cached and replayed for 10 s; the account-fallback loop retries with zero delay and no cap and writes a cooldown onto *every* account on any 5xx; refresh fetches have no timeout and are serialized behind a credential lock. Together these mean a single provider hiccup can lock all accounts for two minutes and stall the gateway.
 
-The persistence layer adds a fourth theme: on the `sql.js` fallback (the machines least able to recover), the pre-migration "safety backup" is a **silent no-op**, `persist()` is non-atomic (crash mid-write → unrecoverable corrupt DB), and on Windows an upgrade silently starts empty because the legacy `~/.flagshiprouter` home is never probed.
+The persistence layer adds a fourth theme: on the `sql.js` fallback (the machines least able to recover), the pre-migration "safety backup" is a **silent no-op**, `persist()` is non-atomic (crash mid-write → unrecoverable corrupt DB), and on Windows an upgrade silently starts empty because the legacy `~/.vitonlinerouter` home is never probed.
 
 **Verdict:** safe for local, single-user, trusted-network use today. **Not** safe to expose on a LAN, a tunnel, or a 0.0.0.0 bind until at least the Critical and the High items in §6 are addressed.
 
@@ -91,7 +91,7 @@ Sorted by severity. IDs are stable references used in §4–§5 and §6.
 | H-12 | High | Executors | `open-sse/executors/cursor.js:183-185` | `gunzipSync` with no output cap → decompression-bomb OOM |
 | H-13 | High | Persistence | `src/lib/db/adapters/sqljsAdapter.js:24-28` | Non-atomic `persist()` → corrupt DB with no recovery path |
 | H-14 | High | Persistence | `src/lib/db/backup.js:39-63` | sql.js "safety backup" is a silent no-op (ATTACH is in-memory) |
-| H-15 | High | Persistence | `src/lib/db/migrate.js:256-263` | Legacy `~/.flagshiprouter` never probed → Windows upgrade starts empty |
+| H-15 | High | Persistence | `src/lib/db/migrate.js:256-263` | Legacy `~/.vitonlinerouter` never probed → Windows upgrade starts empty |
 | H-16 | High | CLI | `cli/cli.js:113,545-547,840-874` | EADDRINUSE becomes an infinite crash loop; `MAX_PORT_ATTEMPTS` dead code |
 | H-17 | High | CLI | `cli/cli.js:846-853` | Crash-recovery writes the legacy `db.json` the server no longer reads |
 | H-18 | High | CLI | `cli/src/cli/utils/input.js:141` | Ctrl-C in the TUI skips cleanup → orphaned detached server |
@@ -214,7 +214,7 @@ const proxyIp = xRealIp || (xff ? String(xff).split(",")[0].trim() : "");
 const ip = isLoopbackProxy && proxyIp ? proxyIp : socketIp;
 ```
 
-**Why it is a bug.** The wrapper's whole purpose is to make the client IP unspoofable, and it does that correctly for direct peers (line 61 gates on the TCP peer). But when the TCP peer *is* a loopback reverse proxy, it adopts the **leftmost** XFF entry — which is the value the *client* supplied. The default configuration of the reverse proxies this code explicitly supports (`nginx`'s `$proxy_add_x_forwarded_for`, Caddy, frp, cloudflared-local) **appends** the observed address to whatever the client sent, producing `6.6.6.6, <real-ip>`. The wrapper then stamps `6.6.6.6` into `x-fr-real-ip` and signs it with the unguessable peer token, so downstream consumers trust it completely.
+**Why it is a bug.** The wrapper's whole purpose is to make the client IP unspoofable, and it does that correctly for direct peers (line 61 gates on the TCP peer). But when the TCP peer *is* a loopback reverse proxy, it adopts the **leftmost** XFF entry — which is the value the *client* supplied. The default configuration of the reverse proxies this code explicitly supports (`nginx`'s `$proxy_add_x_forwarded_for`, Caddy, frp, cloudflared-local) **appends** the observed address to whatever the client sent, producing `6.6.6.6, <real-ip>`. The wrapper then stamps `6.6.6.6` into `x-vr-real-ip` and signs it with the unguessable peer token, so downstream consumers trust it completely.
 
 **Failure scenario.** A remote attacker sends `X-Forwarded-For: 6.6.6.6` through the loopback proxy. `loginLimiter.getClientIp` (`src/lib/auth/loginLimiter.js:52-55`) buckets the attempt under `6.6.6.6`; rotating the header defeats the 5-failure lockout (`src/app/api/auth/login/route.js:24-28`) → **unlimited dashboard password brute-force**. `dashboardGuard.isLoopbackPeer` (`src/dashboardGuard.js:112-114`) and request logs are poisoned by the same mechanism.
 
@@ -243,7 +243,7 @@ fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem);   // no mode → 0666 & ~umas
 fs.writeFileSync(ROOT_CA_CERT_PATH, certPem);
 ```
 
-**Failure scenario.** `MITM_DIR` is `~/.flagshiprouter/mitm` (POSIX) / `%APPDATA%\<slug>\mitm` (Windows). On Linux/macOS the key lands `0644`. The *same* CA is auto-installed into the system trust store (`src/mitm/cert/install.js`). Any local unprivileged user or process reads `rootCA.key` and signs a leaf certificate for `*.google.com` or a bank host that every TLS client on the machine trusts → full TLS interception of the very traffic the MITM exists to capture. Windows ACLs mitigate; the shipped Docker/Linux path does not.
+**Failure scenario.** `MITM_DIR` is `~/.vitonlinerouter/mitm` (POSIX) / `%APPDATA%\<slug>\mitm` (Windows). On Linux/macOS the key lands `0644`. The *same* CA is auto-installed into the system trust store (`src/mitm/cert/install.js`). Any local unprivileged user or process reads `rootCA.key` and signs a leaf certificate for `*.google.com` or a bank host that every TLS client on the machine trusts → full TLS interception of the very traffic the MITM exists to capture. Windows ACLs mitigate; the shipped Docker/Linux path does not.
 
 **Fix.** `fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem, { mode: 0o600 })`, re-assert permissions on load (`fs.chmodSync(..., 0o600)`, since a regenerated-in-place file keeps its old mode), and create `MITM_DIR` with `0o700`.
 
@@ -256,7 +256,7 @@ fs.writeFileSync(ROOT_CA_CERT_PATH, certPem);
 function deriveKey() {
   const { machineIdSync } = require("node-machine-id");
   const raw = machineIdSync();
-  return crypto.createHash("sha256").update(raw + ENCRYPT_SALT).digest(); // ENCRYPT_SALT = "flagshiprouter-mitm-pwd" (line 99)
+  return crypto.createHash("sha256").update(raw + ENCRYPT_SALT).digest(); // ENCRYPT_SALT = "vitonlinerouter-mitm-pwd" (line 99)
 }
 ...
 if (password) updates.mitmSudoEncrypted = encryptPassword(password); // stored in the settings table
@@ -450,7 +450,7 @@ adapter.exec(`INSERT INTO bak.${t.name} SELECT * FROM main.${t.name}`);
 
 **Fix.** Branch on `adapter.driver === "sql.js"` → `fs.writeFileSync(dest, Buffer.from(adapter.raw.export()))`; for all adapters assert `fs.existsSync(dest) && fs.statSync(dest).size > 0` after backup and rethrow loudly if not.
 
-#### H-15 — Legacy `~/.flagshiprouter` home is never probed
+#### H-15 — Legacy `~/.vitonlinerouter` home is never probed
 
 **Location:** `src/lib/db/migrate.js:256-263`, `src/lib/db/paths.js:8-13`
 **Verification:** confirmed by reading against the documented pre-`DATA_DIR` location (`CLAUDE.md:94`, `docs/ARCHITECTURE.md:141,147,381-382`).
@@ -461,7 +461,7 @@ const legacyMain = readJsonSafe(LEGACY_FILES.main);   // path.join(DATA_DIR, "db
 if (fresh && hasLegacy && !alreadyImported) { /* import */ }   // silently skipped when !hasLegacy
 ```
 
-**Failure scenario.** The historical home is `~/.flagshiprouter` cross-platform. On Windows the new default is `%APPDATA%\flagshiprouter` (`src/lib/dataDir.js:9-13`), so an upgrading Windows user's `C:\Users\X\.flagshiprouter\{db.json,usage.json,request-details.json,disabledModels.json}` are invisible to the import → `hasLegacy` is false → **zero rows imported, no warning**, and the one-time `.migrated-from-json` marker is never even needed. Settings, provider connections, API keys and full usage history appear lost (state diverges while the files still exist on disk). On POSIX with `DATA_DIR` unset the paths coincide, which is why this only bites Windows.
+**Failure scenario.** The historical home is `~/.vitonlinerouter` cross-platform. On Windows the new default is `%APPDATA%\vitonlinerouter` (`src/lib/dataDir.js:9-13`), so an upgrading Windows user's `C:\Users\X\.vitonlinerouter\{db.json,usage.json,request-details.json,disabledModels.json}` are invisible to the import → `hasLegacy` is false → **zero rows imported, no warning**, and the one-time `.migrated-from-json` marker is never even needed. Settings, provider connections, API keys and full usage history appear lost (state diverges while the files still exist on disk). On POSIX with `DATA_DIR` unset the paths coincide, which is why this only bites Windows.
 
 **Fix.** In `runMigrationOnce`, also probe the historical home (`path.join(os.homedir(), ".<BRAND.slug>")`) as a legacy source; at minimum log a one-time warning when legacy files exist there and were not imported.
 
@@ -481,7 +481,7 @@ killAllAppProcesses(port)
 
 `killProcessOnPort` (`:396-441`) parses `netstat`, takes only `lines[0]` (`:410-412`), and swallows every kill failure. When the port is held by another user / an admin-owned / a protected process, the spawn succeeds and the Next standalone server dies with EADDRINUSE → `server.on("close")` (`:831`) → `tryRestart` (`:840`) → 2 restarts → the "disable MITM" branch → `restartCount = 0` (`:855`) → **infinite loop**.
 
-**Failure scenario.** Start `flagshiprouter -p 20128` while any non-`node.exe` process (or an admin-owned one) owns 20128 → crash loop at ~1 s / 1 s / 2 s backoff, forever, with only `Server exited (code=1)` shown. A synchronous throw anywhere in the 545-547 chain (e.g. the un-caught `setImmediate` block at `:257-261`) also becomes an unhandled rejection, because the `uncaughtException`/`unhandledRejection` handlers at `:666` only exist *after* `startServer` runs.
+**Failure scenario.** Start `vitonlinerouter -p 20128` while any non-`node.exe` process (or an admin-owned one) owns 20128 → crash loop at ~1 s / 1 s / 2 s backoff, forever, with only `Server exited (code=1)` shown. A synchronous throw anywhere in the 545-547 chain (e.g. the un-caught `setImmediate` block at `:257-261`) also becomes an unhandled rejection, because the `uncaughtException`/`unhandledRejection` handlers at `:666` only exist *after* `startServer` runs.
 
 **Fix.** TCP-probe the port before spawn (the `waitServerReady` helper at `:12-28` already has this shape); on failure either walk to the next free port up to `MAX_PORT_ATTEMPTS` or exit with `Port 20128 is already in use (PID …)`; append `.catch((e) => { console.error(e); process.exit(1); })` to the chain.
 
@@ -498,7 +498,7 @@ if (fs.existsSync(dbPath)) { const db = JSON.parse(...); if (db.settings) db.set
 
 **Failure scenario.** The file never exists (`db.json` is only ever read by `migrate.js:18` as a one-shot import source), so `fs.existsSync` is always false, the MITM-disable recovery **silently never runs**, and if MITM is what is crashing the loop the loop repeats forever.
 
-**Fix.** Flip the setting through the real store (write the `settings` row in `db/data.sqlite`), or have the server honour an env var such as `FLAGSHIPROUTER_DISABLE_MITM=1` that `spawnServer`'s env (`:622-626`) can set.
+**Fix.** Flip the setting through the real store (write the `settings` row in `db/data.sqlite`), or have the server honour an env var such as `VITONLINEROUTER_DISABLE_MITM=1` that `spawnServer`'s env (`:622-626`) can set.
 
 #### H-18 — Ctrl-C inside the TUI skips `cleanup()`
 
@@ -763,7 +763,7 @@ If `cli/cli.js` is missing, `spawn` emits `'error'` (ENOENT) with no handler →
 | L-13 | `src/lib/db/adapters/sqljsAdapter.js:111-112` | SIGINT/SIGTERM flush but don't exit (unlike native adapters, `betterSqliteAdapter.js:38-39`) → Ctrl-C appears to hang | Add `process.exit(0)` after flush |
 | L-14 | `src/lib/db/driver.js:82` | A rejected `initPromise` is cached permanently → every `getAdapter()` rejects until restart | On rejection, `state.initPromise = null` |
 | L-15 | `src/lib/db/repos/usageRepo.js:177` | Pending-request timers not `unref`'d → up to 60 s delay of `beforeExit` flush | `pendingTimers[timerKey]?.unref?.()` |
-| L-16 | `CLAUDE.md:94`, `docs/ARCHITECTURE.md:147-148,545` | Docs claim `usage.json`/`log.txt` live under `~/.flagshiprouter` and don't follow `DATA_DIR` — inverted: `usageDb.js` is a SQLite shim, `appendRequestLog` is a no-op (`usageRepo.js:774-775`), no live writer of `usage.json` | Update the docs (and see H-15 for the real legacy-location bug this obscures) |
+| L-16 | `CLAUDE.md:94`, `docs/ARCHITECTURE.md:147-148,545` | Docs claim `usage.json`/`log.txt` live under `~/.vitonlinerouter` and don't follow `DATA_DIR` — inverted: `usageDb.js` is a SQLite shim, `appendRequestLog` is a no-op (`usageRepo.js:774-775`), no live writer of `usage.json` | Update the docs (and see H-15 for the real legacy-location bug this obscures) |
 | L-17 | `open-sse/executors/cursor.js:443-446` | Abort listener never removed after the request settles (http2 path) | `signal.removeEventListener` inside `finish` |
 | L-18 | `open-sse/executors/cursor.js:390` | Bypass shim (`proxyFetch.js:238-292`) has no `arrayBuffer()` and a `Map` headers object, ignores `options.signal` → TypeError / uncancellable on `api2.cursor.sh` (a `MITM_BYPASS_HOSTS` entry) | Give the shim an `arrayBuffer()`/Headers-compatible shape; wire the signal |
 | L-19 | `open-sse/executors/windsurf.js:225-235` (also `:292-297,302`) | Unbounded `readVarint` → silently wrong field lengths on malformed gRPC-web frames (no crash; `slice` clamps) | Cap at 5 bytes / `shift < 35`; validate `offset + len <= buf.length` |
@@ -794,7 +794,7 @@ H-11 (`codex._isCompact`) is the proven instance; the pattern (executors are sin
 
 ### T4 — Trust boundaries that are correct in production but have an insecure fallback
 H-1 (leftmost XFF), M-13 (dev Host), L-4 (`X-Forwarded-Host`), L-5 (non-TCP). Each has a "secure when configured correctly" path and a "trusts the client" fallback.
-**Recommendation:** invert the default — *deny* when provenance cannot be proven, rather than falling back to client-supplied values. This is already the design intent (`x-fr-peer-token`); the fallbacks just need to fail closed.
+**Recommendation:** invert the default — *deny* when provenance cannot be proven, rather than falling back to client-supplied values. This is already the design intent (`x-vr-peer-token`); the fallbacks just need to fail closed.
 
 ### T5 — State migrations that are documented but not executed
 H-15 (legacy home never probed), H-17 (recovery writes the dead `db.json`), L-16 (docs describe the old model), L-10. The `db.json → SQLite` migration left the *CLI* and the *docs* behind the *server*.
@@ -805,7 +805,7 @@ H-3 (0644 CA key), H-4 (recomputable key), H-5 (TLS verification off), L-3 (head
 **Recommendation:** a documented "secret at rest" policy — every secret file `0600` + `0700` dir (the code already does this in `dashboardSession.js`/`machineId.js`; enforce it uniformly), OS keychain for user passwords, and a rule that no upstream body is echoed verbatim to clients.
 
 ### What is *not* a problem (important for balance)
-The auth model is sound: API-key validation is an exact SQL match with an active-flag check and no empty-key fallback; the `x-fr-peer-token` design genuinely prevents peer-identity spoofing in production; the JWT layer pins HS256 and rejects alg-confusion; OIDC uses state+nonce+PKCE with proper id_token verification. The translator registration is complete (all 12 request / 10 response translators imported). The kiro EventStream parser is bounds-checked and CRC-verified throughout. The sql.js adapter's *transaction* discipline is correct (every read-modify-write runs inside one sync transaction) — it is only *durability* and *cross-process* that fail.
+The auth model is sound: API-key validation is an exact SQL match with an active-flag check and no empty-key fallback; the `x-vr-peer-token` design genuinely prevents peer-identity spoofing in production; the JWT layer pins HS256 and rejects alg-confusion; OIDC uses state+nonce+PKCE with proper id_token verification. The translator registration is complete (all 12 request / 10 response translators imported). The kiro EventStream parser is bounds-checked and CRC-verified throughout. The sql.js adapter's *transaction* discipline is correct (every read-modify-write runs inside one sync transaction) — it is only *durability* and *cross-process* that fail.
 
 ---
 
@@ -834,7 +834,7 @@ Ordered by (severity × ease). The P0/P1 items are the difference between "local
 | 12 | **H-8** | `AbortSignal.timeout` on all refresh fetches |
 | 13 | **H-6** | Pass `proxyOptions`; wrap refresh in `withCredentialRefreshLock` |
 | 14 | **H-9** | Cap account attempts + backoff; 5xx → `cooldownMs: 0` |
-| 15 | **H-15** | Probe the legacy `~/.flagshiprouter` home during migration |
+| 15 | **H-15** | Probe the legacy `~/.vitonlinerouter` home during migration |
 | 16 | **H-12** | `maxOutputLength` on inflate calls |
 | 17 | **H-23/H-24** | `fallbackToolCallId` in both translators; open the Claude block on id **or** name |
 | 18 | **H-11** | Derive `_isCompact` per-request (no singleton state) |
@@ -863,7 +863,7 @@ Explicitly checked and found sound (so their absence above is meaningful):
 
 **Auth & secrets** — JWT pinned to HS256 with `jose.jwtVerify` rejecting `none`/alg-confusion; secret is env or an auto-generated 32-byte `0600` file; cookies `httpOnly` + `SameSite=Lax` + conditional `secure`; OIDC state/nonce/PKCE-S256 with issuer/audience/nonce verification and a correct missing-state rejection; remote login on the default `123456` refused pre-session with a must-change response; bcrypt hashes; login limiter keyed on the token-proven peer IP (XFF rotation cannot escape *unless* H-1 is exploited); API keys looked up by parameterized SQL; no `'use client'` file imports `@/lib/db`, `@/lib/oauth`, or `@/models`; no `NEXT_PUBLIC_` secret variables; the forged `9r_mimo_login` cookie is dropped without a valid dashboard session (`src/proxy.js:25-31`); `reset-password` is local-only-gated.
 
-**Gateway** — the `x-fr-peer-token` proof-of-stamp design prevents peer-identity forgery (client cannot forge loopback/peer identity); XFF stripping is correct for direct/non-loopback peers; h2c `content-length` validation; WebSocket (non-h2c upgrade) passthrough to `origEmit`; rewrite paths have no traversal (fixed-prefix destinations); `proxyClientMaxBodySize` plumbing.
+**Gateway** — the `x-vr-peer-token` proof-of-stamp design prevents peer-identity forgery (client cannot forge loopback/peer identity); XFF stripping is correct for direct/non-loopback peers; h2c `content-length` validation; WebSocket (non-h2c upgrade) passthrough to `origEmit`; rewrite paths have no traversal (fixed-prefix destinations); `proxyClientMaxBodySize` plumbing.
 
 **Engine** — no infinite loop in the account loop (`auth.js:245` short-circuits `undefined`/`"noauth"` connection ids); no off-by-one in `getRotatedModels`/`rotateModelsFromIndex` (`combo.js:197-243`); no unawaited `async` in `forEach` anywhere in the engine remit; no unhandled rejections in `comboDeadline.js`/`withTimeout`/`collectPanel`; multi-byte UTF-8 and chunk-boundary SSE splitting correct (`stream.js:61,119,124,389-390`); abort propagation to upstream works (`streamHandler.js:49-51,171-175,254-258`); `config/brand.js` and `config/providerModels.js` internally consistent.
 
@@ -892,6 +892,6 @@ This report is the synthesis of six parallel specialist passes plus lead-auditor
 
 **Prompt that produced this audit** (recorded for reproducibility — the "ideal prompt" form):
 
-> Act as a senior software architect conducting a formal technical audit of the FlagshipRouter project at `C:/Users/HUAWEI/FlagshipRouter`. Priority order: (1) correctness bugs — logic errors, race conditions, async hazards, error-handling gaps; (2) security — auth bypass, secret leakage, injection, SSRF, unsafe deserialization; (3) reliability — resource leaks, missing timeouts/retries, crash-on-failure, silent data loss; (4) architecture only where it causes bugs. Evidence standard: every finding cites `file:line`, quotes the code, states a concrete failure scenario, assigns a severity, and gives a minimal fix; verify each claim against the current code before reporting; exclude style nits. Prioritise hot paths (CLI entry, API client, proxy/server, auth, state persistence). Deliverable: Markdown report with executive summary, severity-sorted findings table, detailed findings with code excerpts, and a prioritised remediation plan; state explicitly what was not covered.
+> Act as a senior software architect conducting a formal technical audit of the VitonlineRouter project at `C:/Users/HUAWEI/VitonlineRouter`. Priority order: (1) correctness bugs — logic errors, race conditions, async hazards, error-handling gaps; (2) security — auth bypass, secret leakage, injection, SSRF, unsafe deserialization; (3) reliability — resource leaks, missing timeouts/retries, crash-on-failure, silent data loss; (4) architecture only where it causes bugs. Evidence standard: every finding cites `file:line`, quotes the code, states a concrete failure scenario, assigns a severity, and gives a minimal fix; verify each claim against the current code before reporting; exclude style nits. Prioritise hot paths (CLI entry, API client, proxy/server, auth, state persistence). Deliverable: Markdown report with executive summary, severity-sorted findings table, detailed findings with code excerpts, and a prioritised remediation plan; state explicitly what was not covered.
 
 *End of report.*

@@ -1,23 +1,23 @@
 ---
-name: flagshiprouter-embeddings
-description: Generate vector embeddings via FlagshipRouter /v1/embeddings using OpenAI / Gemini / Mistral / Voyage / Nvidia / GitHub embedding models for RAG, semantic search, similarity. Use when the user wants embeddings, vectors, RAG, semantic search, or to embed text.
+name: vitonlinerouter-embeddings
+description: Generate vector embeddings via VitonlineRouter /v1/embeddings using OpenAI / Gemini / Mistral / Voyage / Nvidia / GitHub embedding models for RAG, semantic search, similarity. Use when the user wants embeddings, vectors, RAG, semantic search, or to embed text.
 ---
 
-# FlagshipRouter — Embeddings
+# VitonlineRouter — Embeddings
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models/embedding | jq '.data[].id'
+curl $VITONLINEROUTER_URL/v1/models/embedding | jq '.data[].id'
 # Per-model dimensions
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/text-embedding-3-small"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=openai/text-embedding-3-small"
 ```
 
 ## Endpoint
 
-`POST $FLAGSHIPROUTER_URL/v1/embeddings`
+`POST $VITONLINEROUTER_URL/v1/embeddings`
 
 | Field | Required | Notes |
 |---|---|---|
@@ -29,8 +29,8 @@ curl "$FLAGSHIPROUTER_URL/v1/models/info?id=openai/text-embedding-3-small"
 ## Examples
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/embeddings \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/embeddings \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"openai/text-embedding-3-small","input":["hello","world"]}'
 ```
@@ -38,9 +38,9 @@ curl -X POST $FLAGSHIPROUTER_URL/v1/embeddings \
 JS:
 
 ```js
-const r = await fetch(`${process.env.FLAGSHIPROUTER_URL}/v1/embeddings`, {
+const r = await fetch(`${process.env.VITONLINEROUTER_URL}/v1/embeddings`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.FLAGSHIPROUTER_KEY}`, "Content-Type": "application/json" },
+  headers: { "Authorization": `Bearer ${process.env.VITONLINEROUTER_KEY}`, "Content-Type": "application/json" },
   body: JSON.stringify({ model: "gemini/text-embedding-004", input: "RAG chunk text" }),
 });
 const { data } = await r.json();

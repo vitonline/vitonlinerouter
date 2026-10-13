@@ -195,7 +195,7 @@ export default function CodexToolCard({ tool, isExpanded, onToggle, baseUrl, api
     setApplying(true);
     setMessage(null);
     try {
-      // Use sk_flagshiprouter for localhost if no key, otherwise use selected key
+      // Use sk_vitonlinerouter for localhost if no key, otherwise use selected key
       const keyToUse = (selectedApiKey && selectedApiKey.trim())
         ? selectedApiKey
         : (!cloudEnabled ? `sk_${BRAND.modelPrefix}` : selectedApiKey);

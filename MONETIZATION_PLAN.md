@@ -1,10 +1,10 @@
-# FlagshipRouter: first paid customers
+# VitonlineRouter: first paid customers
 
 Prepared 13 October 2026. Proposed prices and targets are experiments, not forecasts. No public launch, purchases, customer contact or billing changes are authorized by this plan.
 
 ## Recommended business
 
-Start with a paid setup and maintenance service for small coding teams. Customers keep their own API accounts and pay providers directly. Install FlagshipRouter on their machine or infrastructure, connect supported coding tools, configure a small tested model pool, and maintain it.
+Start with a paid setup and maintenance service for small coding teams. Customers keep their own API accounts and pay providers directly. Install VitonlineRouter on their machine or infrastructure, connect supported coding tools, configure a small tested model pool, and maintain it.
 
 Offer: “I configure and maintain one AI endpoint for your coding tools, with tested fallback, clear provider errors and spending visibility.”
 

@@ -365,7 +365,7 @@ async function routeSingleModelChat(body, modelStr, clientRawRequest = null, req
 
     if (result.success) {
       const headers = new Headers(result.response.headers);
-      headers.set("x-fr-upstream-model", `${provider}/${model}`);
+      headers.set("x-vr-upstream-model", `${provider}/${model}`);
       return new Response(result.response.body, { status: result.response.status, headers });
     }
     if (signal?.aborted) return errorResponse(499, "Combo request cancelled");

@@ -1,25 +1,25 @@
 ---
-name: flagshiprouter-web-search
-description: Web and X search via FlagshipRouter /v1/search using Tavily / Exa / Brave / Serper / SearXNG / Google PSE / Linkup / SearchAPI / You.com / Perplexity / Xquik. Use when the user wants to search the web, find articles, or search public X posts.
+name: vitonlinerouter-web-search
+description: Web and X search via VitonlineRouter /v1/search using Tavily / Exa / Brave / Serper / SearXNG / Google PSE / Linkup / SearchAPI / You.com / Perplexity / Xquik. Use when the user wants to search the web, find articles, or search public X posts.
 ---
 
-# FlagshipRouter — Web Search
+# VitonlineRouter — Web Search
 
-Requires `FLAGSHIPROUTER_URL` (and `FLAGSHIPROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/FlagshipRouter/refs/heads/main/skills/flagshiprouter/SKILL.md for setup.
+Requires `VITONLINEROUTER_URL` (and `VITONLINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/theRizwan/VitonlineRouter/refs/heads/main/skills/vitonlinerouter/SKILL.md for setup.
 
 ## Discover
 
 ```bash
-curl $FLAGSHIPROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webSearch") | .id'
+curl $VITONLINEROUTER_URL/v1/models/web | jq '.data[] | select(.kind=="webSearch") | .id'
 # Per-provider params (searchTypes, maxResults, required options like cx for google-pse)
-curl "$FLAGSHIPROUTER_URL/v1/models/info?id=tavily/search"
+curl "$VITONLINEROUTER_URL/v1/models/info?id=tavily/search"
 ```
 
 IDs end in `/search` (e.g. `tavily/search`). Combos (`owned_by:"combo"`) chain providers with auto-fallback.
 
 ## Endpoint
 
-`POST $FLAGSHIPROUTER_URL/v1/search`
+`POST $VITONLINEROUTER_URL/v1/search`
 
 | Field | Required | Notes |
 |---|---|---|
@@ -32,18 +32,18 @@ IDs end in `/search` (e.g. `tavily/search`). Combos (`owned_by:"combo"`) chain p
 ## Examples
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/search \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/search \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"tavily","query":"FlagshipRouter open source","max_results":5}'
+  -d '{"model":"tavily","query":"VitonlineRouter open source","max_results":5}'
 ```
 
 JS:
 
 ```js
-const r = await fetch(`${process.env.FLAGSHIPROUTER_URL}/v1/search`, {
+const r = await fetch(`${process.env.VITONLINEROUTER_URL}/v1/search`, {
   method: "POST",
-  headers: { "Authorization": `Bearer ${process.env.FLAGSHIPROUTER_KEY}`, "Content-Type": "application/json" },
+  headers: { "Authorization": `Bearer ${process.env.VITONLINEROUTER_KEY}`, "Content-Type": "application/json" },
   body: JSON.stringify({ model: "search-combo", query: "latest LLM benchmarks", max_results: 10 }),
 });
 console.log(await r.json());
@@ -52,13 +52,13 @@ console.log(await r.json());
 X search with Xquik:
 
 ```bash
-curl -X POST $FLAGSHIPROUTER_URL/v1/search \
-  -H "Authorization: Bearer $FLAGSHIPROUTER_KEY" \
+curl -X POST $VITONLINEROUTER_URL/v1/search \
+  -H "Authorization: Bearer $VITONLINEROUTER_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"xquik","query":"from:github release","max_results":10,"provider_options":{"queryType":"Latest"}}'
 ```
 
-Add the Xquik API key in FlagshipRouter's provider settings. Xquik charges 1 credit per returned post. Continue a search by passing `pagination.next_cursor` as `provider_options.cursor`.
+Add the Xquik API key in VitonlineRouter's provider settings. Xquik charges 1 credit per returned post. Continue a search by passing `pagination.next_cursor` as `provider_options.cursor`.
 
 Xquik responses include provider pagination and credit usage:
 
@@ -74,7 +74,7 @@ Xquik responses include provider pagination and credit usage:
 ```json
 {
   "provider": "tavily",
-  "query": "FlagshipRouter open source",
+  "query": "VitonlineRouter open source",
   "results": [
     {
       "title": "...", "url": "https://...", "display_url": "github.com/...",

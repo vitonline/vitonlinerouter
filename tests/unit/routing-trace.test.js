@@ -18,9 +18,9 @@ it("records failed model attempts and actual upstream selection without request 
   const response = await traceComboRouting(async options => {
     await options.handleSingleModel(options.body, "first/model");
     return options.handleSingleModel(options.body, "public/alias");
-  }, { body: { apiKey: "private-key", messages: [{ content: "private-prompt" }] }, comboName: "Pilot", handleSingleModel: async (_body, model) => model.startsWith("first/") ? new Response("failure", { status: 503 }) : new Response("OK", { headers: { "x-fr-upstream-model": "actual/model" } }) });
-  expect(response.headers.get("x-fr-selected-model")).toBe("actual/model");
-  expect(response.headers.get("x-fr-model-attempts")).toBe("2");
+  }, { body: { apiKey: "private-key", messages: [{ content: "private-prompt" }] }, comboName: "Pilot", handleSingleModel: async (_body, model) => model.startsWith("first/") ? new Response("failure", { status: 503 }) : new Response("OK", { headers: { "x-vr-upstream-model": "actual/model" } }) });
+  expect(response.headers.get("x-vr-selected-model")).toBe("actual/model");
+  expect(response.headers.get("x-vr-model-attempts")).toBe("2");
   const value = state.db.get("SELECT value FROM kv WHERE scope = 'routingTraces'").value;
   expect(value).not.toMatch(/private-key|private-prompt/);
   const record = JSON.parse(value);

@@ -47,7 +47,7 @@ const readSettings = async () => {
   }
 };
 
-// Check if settings has FlagshipRouter customModels
+// Check if settings has VitonlineRouter customModels
 const hasRouterConfig = (settings) => {
   if (!settings || !settings.customModels) return false;
   return settings.customModels.some(m => m.id?.startsWith(`custom:${BRAND.name}`));
@@ -80,7 +80,7 @@ export async function GET() {
   }
 }
 
-// POST - Update FlagshipRouter customModels (merge with existing settings)
+// POST - Update VitonlineRouter customModels (merge with existing settings)
 // Accepts either `model` (string, legacy single-model) or `models` (array of strings, multi-model)
 // Also accepts `activeModel` to set which model is active/primary
 export async function POST(request) {
@@ -112,7 +112,7 @@ export async function POST(request) {
       settings.customModels = [];
     }
 
-    // Remove all existing FlagshipRouter configs
+    // Remove all existing VitonlineRouter configs
     settings.customModels = settings.customModels.filter(m => !m.id?.startsWith(`custom:${BRAND.name}`));
 
     // Normalize baseUrl to ensure /v1 suffix
@@ -172,7 +172,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove FlagshipRouter customModels only (keep other settings)
+// DELETE - Remove VitonlineRouter customModels only (keep other settings)
 export async function DELETE() {
   try {
     const settingsPath = getDroidSettingsPath();
@@ -192,7 +192,7 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove FlagshipRouter customModels
+    // Remove VitonlineRouter customModels
     if (settings.customModels) {
       settings.customModels = settings.customModels.filter(m => !m.id?.startsWith(`custom:${BRAND.name}`));
       

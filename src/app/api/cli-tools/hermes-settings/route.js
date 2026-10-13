@@ -158,7 +158,7 @@ const readEnvFile = async () => {
   }
 };
 
-// Detect flagshiprouter by base_url containing localhost/127.0.0.1 or matching tunnel URL
+// Detect vitonlinerouter by base_url containing localhost/127.0.0.1 or matching tunnel URL
 const hasRouterConfig = (modelCfg) => {
   if (!modelCfg?.base_url) return false;
   return modelCfg.provider === "custom" && /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(modelCfg.base_url);

@@ -6,7 +6,7 @@
  *  - byte-exact forwarding when no prefix rewrite is needed
  *  - multi-account selection (preferred connection id, rotation on 401)
  *  - NO rotation on 5xx creation errors (a job may already exist upstream)
- *  - connection id surfaced via x-flagshiprouter-connection-id
+ *  - connection id surfaced via x-vitonlinerouter-connection-id
  *  - GET polling pinned to x-connection-id, no rotation
  *  - refresh failure recorded via markAccountUnavailable (dashboard re-auth signal)
  */

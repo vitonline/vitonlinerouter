@@ -6,7 +6,7 @@ import { hasTrustedPeerHeaders } from "@/lib/auth/trustedPeer";
 import { timingSafeEqual } from "node:crypto";
 import { checkApiRequestLimit } from "@/lib/auth/apiLimiter";
 
-const CLI_TOKEN_HEADER = "x-fr-cli-token";
+const CLI_TOKEN_HEADER = "x-vr-cli-token";
 const CLI_TOKEN_SALT = "fr-cli-auth";
 
 let cachedCliToken = null;
@@ -114,7 +114,7 @@ function isLoopbackHostname(h) {
 
 function isLoopbackPeer(request) {
   if (hasTrustedPeerHeaders(request)) {
-    return isLoopbackHostname(request.headers.get("x-fr-real-ip"));
+    return isLoopbackHostname(request.headers.get("x-vr-real-ip"));
   }
   // Bare `next dev` forks its server, so the wrapper never loads and no peer address
   // reaches us. Host is spoofable, so this stays confined to development.
@@ -124,7 +124,7 @@ function isLoopbackPeer(request) {
 export function isLocalRequest(request) {
   // Stamped by custom-server.js when forwarding headers exist: request came through
   // a reverse proxy, so the loopback socket is the proxy hop, not the end-user.
-  if (request.headers.get("x-fr-via-proxy")) return false;
+  if (request.headers.get("x-vr-via-proxy")) return false;
   if (!isLoopbackPeer(request)) return false;
   const origin = request.headers.get("origin");
   if (origin) {
@@ -224,7 +224,7 @@ export async function proxy(request) {
 
   if (isPublicLlmApi(pathname)) {
     if (await canAccessPublicLlmApi(request)) {
-      const peer = hasTrustedPeerHeaders(request) ? request.headers.get("x-fr-real-ip") : "unknown";
+      const peer = hasTrustedPeerHeaders(request) ? request.headers.get("x-vr-real-ip") : "unknown";
       const limit = checkApiRequestLimit(extractApiKey(request), peer);
       if (!limit.allowed) return NextResponse.json({ error: "API request rate limit exceeded" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
       return NextResponse.next();

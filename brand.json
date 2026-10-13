@@ -1,14 +1,14 @@
 {
   "_comment": "Single source of truth for the product brand and provider policy. Edit this file to rename the product, then run `npm run brand:sync` to refresh the static files that cannot read it at runtime (package.json names, CLI bin).",
 
-  "name": "FlagshipRouter",
-  "slug": "flagshiprouter",
-  "modelPrefix": "flagshiprouter",
+  "name": "VitonlineRouter",
+  "slug": "vitonlinerouter",
+  "modelPrefix": "vitonlinerouter",
 
   "tagline": "Reliable AI routing for your coding tools",
   "description": "A self-hosted AI gateway for your own provider accounts, with tested model pools, bounded fallback, clear diagnostics and coding-tool integrations.",
 
-  "repository": "https://github.com/theRizwan/FlagshipRouter",
+  "repository": "https://github.com/vitonline/vitonlinerouter",
   "branch": "main",
 
   "updateCheck": false,

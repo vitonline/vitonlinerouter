@@ -4,12 +4,12 @@ import { getCurrentCodexProviderBaseUrl, getCurrentCodexProviderSettings } from 
 describe("Codex current provider base URL", () => {
   it("uses the base URL from the configured model provider, not an earlier provider", () => {
     const config = `model = "gpt-5"
-model_provider = "flagshiprouter"
+model_provider = "vitonlinerouter"
 
 [model_providers.omniroute]
 base_url = "https://omniroute.example/v1"
 
-[model_providers.flagshiprouter]
+[model_providers.vitonlinerouter]
 base_url = "http://127.0.0.1:20128/v1"
 `;
 
@@ -17,7 +17,7 @@ base_url = "http://127.0.0.1:20128/v1"
   });
 
   it("reads the active provider URL and bearer key when another provider appears first", () => {
-    const config = `model_provider = "flagshiprouter"
+    const config = `model_provider = "vitonlinerouter"
 
 [model_providers.omniroute]
 base_url = "https://omniroute.example/v1"
@@ -25,16 +25,16 @@ base_url = "https://omniroute.example/v1"
 [model_providers.omniroute.http_headers]
 Authorization = "Bearer placeholder-omniroute-key"
 
-[model_providers.flagshiprouter]
-base_url = "https://flagshiprouter.example/v1/"
+[model_providers.vitonlinerouter]
+base_url = "https://vitonlinerouter.example/v1/"
 
-[model_providers.flagshiprouter.http_headers]
-Authorization = "Bearer placeholder-flagshiprouter-key"
+[model_providers.vitonlinerouter.http_headers]
+Authorization = "Bearer placeholder-vitonlinerouter-key"
 `;
 
     expect(getCurrentCodexProviderSettings(config)).toEqual({
-      baseUrl: "https://flagshiprouter.example/v1/",
-      apiKey: "placeholder-flagshiprouter-key",
+      baseUrl: "https://vitonlinerouter.example/v1/",
+      apiKey: "placeholder-vitonlinerouter-key",
     });
   });
 

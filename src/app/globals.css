@@ -8,7 +8,7 @@
 .fonts-loaded .material-symbols-outlined { opacity: 1; transition: opacity .12s ease-out; }
 
 /* ============================================================
-   FlagshipRouter palette — "signal" indigo → cyan on cool neutrals.
+   VitonlineRouter palette — "signal" indigo → cyan on cool neutrals.
    Semantic tokens below are consumed by every dashboard screen.
    ============================================================ */
 :root {

@@ -2,7 +2,7 @@
 
 Added the named **Intern AI** provider with an active saved API-key connection. The key is stored through the existing connection API and is absent from source code and this report. Requests use `https://discovery-api.intern-ai.org.cn/v1/chat/completions`; authenticated live model discovery uses `/v1/models`. Model IDs and capitalization are forwarded unchanged. The provider supports cooldown clearing, saved per-model test results, and provider issue reporting.
 
-Authenticated discovery listed 10 models. Every listed model was tested through FlagshipRouter:
+Authenticated discovery listed 10 models. Every listed model was tested through VitonlineRouter:
 
 | Model | Result |
 | --- | --- |

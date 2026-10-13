@@ -95,7 +95,7 @@ ProviderNode.propTypes = {
   data: PropTypes.object.isRequired,
 };
 
-// Center FlagshipRouter node — pulse/glow on card only (no expanding rings)
+// Center VitonlineRouter node — pulse/glow on card only (no expanding rings)
 function RouterNode({ data }) {
   const powering = (data.activeCount || 0) > 0;
   return (

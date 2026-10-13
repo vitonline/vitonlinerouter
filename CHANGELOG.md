@@ -10,7 +10,7 @@
 
 ## 1.0.0 — 2026-09-27
 
-First FlagshipRouter release.
+First VitonlineRouter release.
 
 ### Added
 - `brand.json`: single source for the product name, CLI command, data folder, the provider key tools show on models, repository links and the provider policy. `npm run brand:sync` stamps it into both `package.json` files.
